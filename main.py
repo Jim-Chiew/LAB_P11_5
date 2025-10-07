@@ -1,19 +1,13 @@
-from datetime import date, datetime
-
+from datetime import date
 from dash import Dash, html, dcc, Input, callback, Output
-
 from yfinance_interface import get_stock_data
-from plots_interface import fig_line_plot, fig_indicators
+from plots_interface import fig_main_plot, fig_indicators
 from calculations import max_profit
-
-#fig_indicators(data, max_prof).show()
-#fig_line_plot(data, 'AMZN', buy_day, sell_day).show()
 
 # Default datas:
 ticker = "AMZN"
 start_date = '1990-01-01'
 end_date = '2024-08-1'
-
 
 app = Dash()
 app.layout = html.Div(children=[
@@ -56,8 +50,21 @@ app.layout = html.Div(children=[
             id="sma_window"
         ),
 
+    dcc.Dropdown(
+        id='return_type',
+        options=[
+            {'label': 'Simple Returns', 'value': 'simple'},
+            {'label': 'Log Returns', 'value': 'log'},
+        ],
+        value='simple',  # default value
+        clearable=False,
+        style={'width': '200px'}
+    ),
+    
+    # Uses ID to identify graph for callback. 
+    # Replaces the section with the associated graph 
     dcc.Graph(
-        id='line_graph',
+        id='main_graph',
     ),
 
     dcc.Graph(
@@ -66,18 +73,18 @@ app.layout = html.Div(children=[
 ])
 
 @callback(
-    Output('line_graph', 'figure'),
+    Output('main_graph', 'figure'),
     Output('indicator_graph', 'figure'),
     Input('ticker', 'value'),
     Input('start_date', 'date'),
     Input('end_date', 'date'),
     Input('sma_window', 'value'),
+    Input('return_type', 'value')
     )
-def update_line_fig(ticker, start_date, end_date, sma_window):
+def update_line_fig(ticker, start_date, end_date, sma_window, return_type):
     data = get_stock_data(ticker, start_date, end_date)
     max_prof, sell_date, buy_date = max_profit(data)
-    return fig_line_plot(data, ticker, buy_date, sell_date, int(sma_window)), fig_indicators(data, max_prof)
-
+    return fig_main_plot(data, ticker, buy_date, sell_date, int(sma_window), return_type), fig_indicators(data, max_prof, return_type)  # ADD return_type here
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0",debug=True)
+    app.run(host="127.0.0.1",debug=True)
