@@ -1,12 +1,17 @@
-def compute_sma(data, window=20):
+from pandas import DataFrame
+
+
+def compute_sma(data:DataFrame, window:int=20):
     data[f'SMA'] = data['Close'].rolling(window=window).mean()
     return data
 
-def compute_daily_returns(data):
+
+def compute_daily_returns(data:DataFrame):
     data['Daily_Return'] = data['Close'].pct_change() * 100
     return data
 
-def max_profit(data):
+
+def max_profit(data:DataFrame):
     min_price = max_profit = temp_buy_day = data.iloc[0]["Close"]
     buy_day = sell_day = temp_buy_day = data.iloc[0]["Date"]
     for _, row_data in data.iterrows():
@@ -21,7 +26,8 @@ def max_profit(data):
             sell_day = row_data["Date"]
     return max_profit, buy_day, sell_day
 
-def max_profitv2(data):
+
+def max_profitv2(data:DataFrame):
     max_data = data.loc[data["Close"].idxmax()]
     min_data = data.loc[data["Close"].idxmin()]
 
@@ -30,7 +36,8 @@ def max_profitv2(data):
     sell_date = max_data["Date"]
     return profit, buy_date, sell_date
 
-def max_profitv3(data):
+
+def max_profitv3(data:DataFrame):
     prices = data['Close'].tolist()
     
     # Single Transaction (buy once, sell once)
@@ -87,7 +94,8 @@ def max_profitv3(data):
         i += 1
     return max_profit_single, transactions, buy_day_single, sell_day_single, total_profit_multiple
 
-def count_price_runs(data):
+
+def count_price_runs(data:DataFrame):
     runs = {'upward': {'count': 0, 'total_days': 0},
             'downward': {'count': 0, 'total_days': 0}}
     
