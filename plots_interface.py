@@ -25,7 +25,7 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
                         # Exp: [0.5, 0.5] will have 2 row with equal space
                         row_heights=[0.5, 0.2, 0.3],
                         vertical_spacing=0.05, 
-                        subplot_titles=("SMA and closing price", "Daily returns", "Trands")
+                        subplot_titles=("SMA and closing price", "Daily returns", "Trends")
                         )
 
     data = compute_sma(data, sma_window)
