@@ -5,7 +5,7 @@ from calculations import count_price_runs, compute_sma, compute_daily_returns
 def fig_line_plot(data, ticker, buy_day, sell_day, sma_window):
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
                         row_heights=[0.5, 0.2, 0.3],  # top bigger than bottom
-                        vertical_spacing=0.05, subplot_titles=("SMA and closing price", "Daily returns", "Trands"))
+                        vertical_spacing=0.05, subplot_titles=("SMA and closing price", "Daily returns", "Trends"))
 
     data = compute_sma(data, sma_window)
     data = compute_daily_returns(data)
@@ -74,7 +74,7 @@ def fig_indicators(data, max_profit):
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['upward']['count'],
-        title = {"text": "Upward occurances"},
+        title = {"text": "Upward occurrences"},
         number={"font": {"color": "green"}},
         domain = {'x': [0, 0.5], 'y': [0.33, 0.67]}))
 
@@ -88,7 +88,7 @@ def fig_indicators(data, max_profit):
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['count'],
-        title = {"text": "Downward occurances"},
+        title = {"text": "Downward occurences"},
         number={"font": {"color": "red"}},
         domain = {'x': [0, 0.5], 'y': [0, 0.33]}))
 
@@ -98,6 +98,20 @@ def fig_indicators(data, max_profit):
         title = {"text": "Downward total days"},
         number={"font": {"color": "red"}},
         domain = {'x': [0.5, 1], 'y': [0, 0.33]}))
+    
+    fig.add_trace(Indicator(
+            mode = "number",
+            value = price_runs['upward']['highest'],
+            title = {"text": "Maximum upward days"},
+            number={"font": {"color": "green"}},
+            domain = {'x': [0.5, 1], 'y': [0.67, 1]}))
+
+    fig.add_trace(Indicator(
+        mode = "number",
+        value = price_runs['downward']['highest'],
+        title = {"text": "Maximum downward days"},
+        number={"font": {"color": "red"}},
+        domain = {'x': [0, 0.5], 'y': [0.67, 1]}))
     
     fig.update_layout(
     height=600

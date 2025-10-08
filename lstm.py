@@ -77,5 +77,5 @@ def lstm(data):
     plt.plot(train['Close'])
     plt.plot(valid[['Close', 'Predictions']])
     plt.legend(['Train', 'Val', 'Predictions'], loc='lower right')
-    plt.show()
+    return plt
         

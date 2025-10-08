@@ -1,5 +1,14 @@
+import numpy
+
+
 def compute_sma(data, window=20):
-    data[f'SMA'] = data['Close'].rolling(window=window).mean()
+    # data[f'SMA'] = data['Close'].rolling(window=window).mean()  # validation code
+    window_sum = sum(data['Close'].iloc[:window])        # sliding window to get SMA
+    results = [window_sum / window]
+    for i in range(window, len(data)):
+        window_sum += data['Close'].iloc[i] - data['Close'].iloc[i - window]
+        results.append(window_sum / window)
+    data['SMA'] = [numpy.nan] * (window - 1) + results
     return data
 
 def compute_daily_returns(data):
@@ -88,36 +97,77 @@ def max_profitv3(data):
     return max_profit_single, transactions, buy_day_single, sell_day_single, total_profit_multiple
 
 def count_price_runs(data):
-    runs = {'upward': {'count': 0, 'total_days': 0},
-            'downward': {'count': 0, 'total_days': 0}}
-    
-    direction = None
-    length = 0
-    
+    runs = {'upward': {'count': 0, 'total_days': 0,'highest': 0},
+            'downward': {'count': 0, 'total_days': 0, 'highest': 0}}
+    current_run = {'type': None, 'length': 0}
+    up_runs = []
+    down_runs = []
+
     for i in range(1, len(data)):
-        if data['Close'].iloc[i] > data['Close'].iloc[i - 1]:
-            if direction != 'up':
-                if direction == 'down' and length > 1:
-                    runs['downward']['count'] += 1
-                    runs['downward']['total_days'] += length
-                direction = 'up'
-                length = 1
-            else:
-                length += 1
-        elif data['Close'].iloc[i] < data['Close'].iloc[i - 1]:
-            if direction != 'down':
-                if direction == 'up' and length > 1:
-                    runs['upward']['count'] += 1
-                    runs['upward']['total_days'] += length
-                direction = 'down'
-                length = 1
-            else:
-                length += 1
+        if data['Close'][i] > data['Close'][i-1]:
+            run_type = 'up'
+        elif data['Close'][i] < data['Close'][i-1]:
+            run_type = 'down'
         else:
-            if direction in ['up', 'down'] and length > 1:
-                runs[f'{direction}ward']['count'] += 1
-                runs[f'{direction}ward']['total_days'] += length
-            direction = None
-            length = 0
+            run_type = 'flat'
+
+        if run_type == current_run['type']:
+            current_run['length'] += 1
+        else:
+            if current_run['type'] == 'up':
+                up_runs.append(current_run['length'])
+            elif current_run['type'] == 'down':
+                down_runs.append(current_run['length'])
+            current_run = {'type': run_type, 'length': 1}
+
+    # Append the last run if it was an up or down run
+    if current_run['type'] == 'up':
+        up_runs.append(current_run['length'])
+    elif current_run['type'] == 'down':
+        down_runs.append(current_run['length'])
+
+
+    runs['upward']['count'] = len(up_runs)
+    runs['upward']['total_days'] = sum(up_runs)
+    runs['downward']['count'] = len(down_runs)
+    runs['downward']['total_days'] = sum(down_runs)
+    runs['upward']['highest'] = max(up_runs) if up_runs else 0
+    runs['downward']['highest'] = max(down_runs) if down_runs else 0
+    # direction = None
+    # length = 1  # Start at 1 for a new run
+
+    # for i in range(1,len(data)):
+
+    #     if data['Close'].iloc[i] > data['Close'].iloc[i - 1]:
+    #         if direction == 'up':
+    #             length += 1
+    #         else:
+    #             if direction == 'down' and length > 1:
+    #                 runs['downward']['count'] += 1
+    #                 runs['downward']['total_days'] += length
+    #                 runs['downward']['highest'] = max(runs['downward']['highest'], length)
+    #             direction = 'up'
+    #             length = 1
+    #     elif data['Close'].iloc[i] < data['Close'].iloc[i - 1]:
+    #         if direction == 'down':
+    #             length += 1
+    #         else:
+    #             if direction == 'up' and length > 1:
+    #                 runs['upward']['count'] += 1
+    #                 runs['upward']['total_days'] += length
+    #                 runs['upward']['highest'] = max(runs['upward']['highest'], length)
+    #             direction = 'down'
+    #             length = 1
+    #     else:
+    #         if direction == 'up' and length > 1:
+    #             runs['upward']['count'] += 1
+    #             runs['upward']['total_days'] += length
+    #             runs['upward']['highest'] = max(runs['upward']['highest'], length)
+    #         elif direction == 'down' and length > 1:
+    #             runs['downward']['count'] += 1
+    #             runs['downward']['total_days'] += length
+    #             runs['downward']['highest'] = max(runs['downward']['highest'], length)
+    #         direction = None
+    #         length = 1
     
     return runs

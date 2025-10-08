@@ -1,11 +1,11 @@
 from datetime import date, datetime
 
 from dash import Dash, html, dcc, Input, callback, Output
-
+import numpy as np
 from yfinance_interface import get_stock_data
 from plots_interface import fig_line_plot, fig_indicators
 from calculations import max_profit
-
+from lstm import lstm
 #fig_indicators(data, max_prof).show()
 #fig_line_plot(data, 'AMZN', buy_day, sell_day).show()
 
@@ -17,10 +17,10 @@ end_date = '2024-08-1'
 
 app = Dash()
 app.layout = html.Div(children=[
-    html.H1(children='Stock trand'),
+    html.H1(children='Stock trend'),
 
     html.Div(children='''
-        View stock trands right here and now.
+        View stock trends right here and now.
     '''),
 
     html.Br(),
@@ -63,11 +63,15 @@ app.layout = html.Div(children=[
     dcc.Graph(
         id='indicator_graph',
     ),
+    # dcc.Graph(
+    #     id='lstm',
+    # ),
 ])
 
 @callback(
     Output('line_graph', 'figure'),
     Output('indicator_graph', 'figure'),
+    # Output('lstm', 'figure'),
     Input('ticker', 'value'),
     Input('start_date', 'date'),
     Input('end_date', 'date'),
@@ -80,4 +84,4 @@ def update_line_fig(ticker, start_date, end_date, sma_window):
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0",debug=True)
+    app.run(host="127.0.0.1",debug=True)
