@@ -1,5 +1,5 @@
-import numpy
-
+import numpy as np
+from pandas import DataFrame
 
 def compute_sma(data, window=20):
     # data[f'SMA'] = data['Close'].rolling(window=window).mean()  # validation code
@@ -8,11 +8,38 @@ def compute_sma(data, window=20):
     for i in range(window, len(data)):
         window_sum += data['Close'].iloc[i] - data['Close'].iloc[i - window]
         results.append(window_sum / window)
-    data['SMA'] = [numpy.nan] * (window - 1) + results            # NAN for (n-1) data that is not computable
+    data['SMA'] = [np.nan] * (window - 1) + results            # NAN for (n-1) data that is not computable
     return data
 
-def compute_daily_returns(data):
-    data['Daily_Return'] = data['Close'].pct_change() * 100
+def compute_daily_returns(data:DataFrame, return_type='both'):
+    """
+    Calculate daily returns with multiple options
+    
+    Parameters:
+    - return_type: 'log' for log returns, 'simple' for percentage returns
+    """
+    
+    # Simple percentage returns
+    if return_type in 'simple':
+        data['Daily_Return'] = data['Close'].pct_change() * 100
+    
+    # Log returns
+    # Calculate log returns using NumPy
+    if return_type in 'log':
+        # Use vectorized NumPy operations for better performance
+        close_prices = data['Close'].values
+        shifted_prices = data['Close'].shift(1).values
+        
+        # Calculate ratio and handle division by zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            ratio = np.divide(close_prices, shifted_prices)
+            log_returns = np.log(ratio)
+        
+        # Replace inf/-inf with NaN (from division by zero or log(0))
+        log_returns = np.where(np.isfinite(log_returns), log_returns, np.nan)
+        
+        data['Log_Daily_Return'] = log_returns
+    
     return data
 
 def max_profit(data):
