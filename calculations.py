@@ -98,9 +98,9 @@ def max_profitv3(data):
 
 def count_price_runs(data):
     runs = {'upward': {'count': 0, 'total_days': 0,'highest': 0},
-            'downward': {'count': 0, 'total_days': 0, 'highest': 0}}
+            'downward': {'count': 0, 'total_days': 0, 'highest': 0}} # initialize dictionary for easy retrieval
     current_run = {'type': None, 'length': 0}
-    up_runs = []
+    up_runs = []                                                    # store lengths of runs
     down_runs = []
 
     for i in range(1, len(data)):
