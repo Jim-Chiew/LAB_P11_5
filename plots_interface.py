@@ -4,7 +4,7 @@ from pandas import DataFrame, Timestamp
 from calculations import count_price_runs, compute_sma, compute_daily_returns
 
 
-def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timestamp, sma_window:int):
+def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timestamp, sma_window:int, return_type: str='simple'):
     """Generates main graph that contains 3 types of sub plots.
         1. Scatter plot that contains SMA, Close price and best day to buy/sell.
         2. Bar plot that shows daily returns.
@@ -27,9 +27,15 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
                         vertical_spacing=0.05, 
                         subplot_titles=("SMA and closing price", "Daily returns", "Trands")
                         )
+    
+    # DEBUG: Check what we have
+    # print(f"DEBUG: return_type = {return_type}")
+    # print(f"DEBUG: Columns before compute_daily_returns: {data.columns.tolist()}")
 
     data = compute_sma(data, sma_window)
-    data = compute_daily_returns(data)
+    data = compute_daily_returns(data, return_type)
+
+    # print(f"DEBUG: Columns after compute_daily_returns: {data.columns.tolist()}")
 
     # Plot for SMA in scatter plot. Row 1. 
     fig.add_trace(Scatter(
@@ -56,12 +62,37 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
     fig.add_vline(x=sell_day, line_width=3, line_dash="dash", line_color="red", row=1, col=1)
 
     # Plot for daily return in bar plot. Row 2.
+    if return_type == 'log':
+        returns_col = 'Log_Daily_Return'
+
+        '''
+        I multiplied by 100 because it is for better visuality. Raw logs returns are very small, typically between -0.1 to 0.1 only, which 
+        is very hard for it to be reflected in the graph. Multiply log returns by 100 to make them more visible (convert to percentage-like)
+        '''
+        name = "Log Daily Return (×100)"
+        y_data = data[returns_col] * 100
+        colors = ['black' for x in data[returns_col]]
+
+    else:
+        returns_col = 'Daily_Return'
+        name = "Daily Return (%)"
+        colors = ['green' if x >= 0 else 'red' for x in data[returns_col]]
+        
     fig.add_trace(Bar(
         x=data["Date"],
-        y=data["Daily_Return"],
-        name="Daily Return",
-        marker_color="tomato"
+        y=data[returns_col],
+        name=name,
+        marker_color=colors,
+        opacity=0.7
     ), row=2, col=1)
+
+    # colors = ['green' if x >= 0 else 'red' for x in data['Daily_Return']]
+    # fig.add_trace(Bar(
+    #     x=data["Date"],
+    #     y=data["Daily_Return"],
+    #     name="Daily Return",
+    #     marker_color=colors,
+    # ), row=2, col=1)
 
     # Plot for stock trand in Candlestick plot. Row 3.
     fig.add_trace(Candlestick(
@@ -84,7 +115,7 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
     return fig
 
 
-def fig_indicators(data:DataFrame, max_profit:float):
+def fig_indicators(data:DataFrame, max_profit:float, return_type:str='simple'):
     """Creates an indicator graph. Numbers only. 
 
     Args:
