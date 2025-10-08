@@ -3,7 +3,7 @@ from datetime import date, datetime
 from dash import Dash, html, dcc, Input, callback, Output
 import numpy as np
 from yfinance_interface import get_stock_data
-from plots_interface import fig_line_plot, fig_indicators, fig_main_plot
+from plots_interface import fig_indicators, fig_main_plot
 from calculations import max_profit
 from lstm import lstm
 #fig_indicators(data, max_prof).show()
