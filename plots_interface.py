@@ -8,7 +8,7 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
     """Generates main graph that contains 3 types of sub plots.
         1. Scatter plot that contains SMA, Close price and best day to buy/sell.
         2. Bar plot that shows daily returns.
-        3. Candlestick plot that shows stock trands.
+        3. Candlestick plot that shows stock trends.
 
     Args:
         data (DataFrame): Contains stock historical data
@@ -25,7 +25,7 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
                         # Exp: [0.5, 0.5] will have 2 row with equal space
                         row_heights=[0.5, 0.2, 0.3],
                         vertical_spacing=0.05, 
-                        subplot_titles=("SMA and closing price", "Daily returns", "Trands")
+                        subplot_titles=("SMA and closing price", "Daily returns", "Trends")
                         )
     
     # DEBUG: Check what we have

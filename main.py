@@ -12,10 +12,10 @@ end_date = '2024-08-1'
 
 app = Dash()
 app.layout = html.Div(children=[
-    html.H1(children='Stock trand'),
+    html.H1(children='Stock trend'),
 
     html.Div(children='''
-        View stock trands right here and now.
+        View stock trends right here and now.
     '''),
 
     html.Br(),
