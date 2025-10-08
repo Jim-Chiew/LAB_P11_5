@@ -31,11 +31,12 @@ def fig_line_plot(data, ticker, buy_day, sell_day, sma_window):
     ), row=1, col=1)
 
     # Daily return
+    colors = ['green' if x >= 0 else 'red' for x in data['Daily_Return']]
     fig.add_trace(Bar(
         x=data["Date"],
         y=data["Daily_Return"],
         name="Daily Return",
-        marker_color="tomato"
+        marker_color=colors,
     ), row=2, col=1)
 
     # Candlestick (row 1)

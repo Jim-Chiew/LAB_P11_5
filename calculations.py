@@ -1,12 +1,26 @@
+from pandas import DataFrame
+import numpy
+
+
 def compute_sma(data, window=20):
-    data[f'SMA'] = data['Close'].rolling(window=window).mean()
+    # data[f'SMA'] = data['Close'].rolling(window=window).mean()  # validation code
+    window_sum = sum(data['Close'].iloc[:window])                 # sliding window to get SMA
+    results = [window_sum / window]
+    for i in range(window, len(data)):
+        window_sum += data['Close'].iloc[i] - data['Close'].iloc[i - window]
+        results.append(window_sum / window)
+    data['SMA'] = [numpy.nan] * (window - 1) + results            # NAN for (n-1) data that is not computable
     return data
 
-def compute_daily_returns(data):
+
+# daily returns in percentage
+def compute_daily_returns(data:DataFrame):
     data['Daily_Return'] = data['Close'].pct_change() * 100
     return data
 
-def max_profit(data):
+
+#Finds the maximum possible profit from buying low and selling high in one trasaction
+def max_profit(data:DataFrame):
     min_price = max_profit = temp_buy_day = data.iloc[0]["Close"]
     buy_day = sell_day = temp_buy_day = data.iloc[0]["Date"]
     for _, row_data in data.iterrows():
@@ -21,7 +35,8 @@ def max_profit(data):
             sell_day = row_data["Date"]
     return max_profit, buy_day, sell_day
 
-def max_profitv2(data):
+
+def max_profitv2(data:DataFrame):
     max_data = data.loc[data["Close"].idxmax()]
     min_data = data.loc[data["Close"].idxmin()]
 
@@ -30,7 +45,8 @@ def max_profitv2(data):
     sell_date = max_data["Date"]
     return profit, buy_date, sell_date
 
-def max_profitv3(data):
+
+def max_profitv3(data:DataFrame):
     prices = data['Close'].tolist()
     
     # Single Transaction (buy once, sell once)
@@ -87,37 +103,46 @@ def max_profitv3(data):
         i += 1
     return max_profit_single, transactions, buy_day_single, sell_day_single, total_profit_multiple
 
+#Looks for continuous runs of upward and downward price movements
 def count_price_runs(data):
-    runs = {'upward': {'count': 0, 'total_days': 0},
-            'downward': {'count': 0, 'total_days': 0}}
-    
-    direction = None
-    length = 0
-    
+    runs = {'upward': {'count': 0, 'total_days': 0,'highest': 0},
+            'downward': {'count': 0, 'total_days': 0, 'highest': 0}} # initialize dictionary for easy retrieval
+    current_run = {'type': None, 'length': 0}
+    up_runs = []                                                    # store lengths of runs
+    down_runs = []
+
     for i in range(1, len(data)):
-        if data['Close'].iloc[i] > data['Close'].iloc[i - 1]:
-            if direction != 'up':
-                if direction == 'down' and length > 1:
-                    runs['downward']['count'] += 1
-                    runs['downward']['total_days'] += length
-                direction = 'up'
-                length = 1
-            else:
-                length += 1
-        elif data['Close'].iloc[i] < data['Close'].iloc[i - 1]:
-            if direction != 'down':
-                if direction == 'up' and length > 1:
-                    runs['upward']['count'] += 1
-                    runs['upward']['total_days'] += length
-                direction = 'down'
-                length = 1
-            else:
-                length += 1
+        today = data['Close'][i]
+        previous_day = data['Close'][i-1]
+        if today > previous_day:                   # determine run type
+            run_type = 'up'
+        elif today < previous_day:
+            run_type = 'down'
         else:
-            if direction in ['up', 'down'] and length > 1:
-                runs[f'{direction}ward']['count'] += 1
-                runs[f'{direction}ward']['total_days'] += length
-            direction = None
-            length = 0
+            run_type = 'flat'
+
+        if run_type == current_run['type']:                         # +1 if same run type
+            current_run['length'] += 1
+        else:
+            if current_run['type'] == 'up':                         # store completed run
+                up_runs.append(current_run['length'])               # compute runs in O(n)
+            elif current_run['type'] == 'down':
+                down_runs.append(current_run['length'])
+            current_run = {'type': run_type, 'length': 1 if run_type != 'flat' else 0}
+
+    # Append the last run if it was an up or down run
+    if current_run['type'] == 'up':
+        up_runs.append(current_run['length'])
+    elif current_run['type'] == 'down':
+        down_runs.append(current_run['length'])
+
+
+    runs['upward']['count'] = len(up_runs)                          # summarize runs
+    runs['upward']['total_days'] = sum(up_runs)                     # update dictionary in O(1)
+    runs['downward']['count'] = len(down_runs)                      
+    runs['downward']['total_days'] = sum(down_runs)
+    runs['upward']['highest'] = max(up_runs) if up_runs else 0
+    runs['downward']['highest'] = max(down_runs) if down_runs else 0
+
     
     return runs
