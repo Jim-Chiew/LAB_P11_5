@@ -86,14 +86,6 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
         opacity=0.7
     ), row=2, col=1)
 
-    # colors = ['green' if x >= 0 else 'red' for x in data['Daily_Return']]
-    # fig.add_trace(Bar(
-    #     x=data["Date"],
-    #     y=data["Daily_Return"],
-    #     name="Daily Return",
-    #     marker_color=colors,
-    # ), row=2, col=1)
-
     # Plot for stock trand in Candlestick plot. Row 3.
     fig.add_trace(Candlestick(
         x=data["Date"],
