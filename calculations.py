@@ -1,8 +1,15 @@
 from pandas import DataFrame
+import numpy as np
 
 
 def compute_sma(data:DataFrame, window:int=20):
-    data[f'SMA'] = data['Close'].rolling(window=window).mean()
+    # data[f'SMA'] = data['Close'].rolling(window=window).mean()  # validation code
+    window_sum = sum(data['Close'].iloc[:window])                 # sliding window to get SMA
+    results = [window_sum / window]
+    for i in range(window, len(data)):
+        window_sum += data['Close'].iloc[i] - data['Close'].iloc[i - window]
+        results.append(window_sum / window)
+    data['SMA'] = [np.nan] * (window - 1) + results            # NAN for (n-1) data that is not computable
     return data
 
 
