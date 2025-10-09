@@ -56,11 +56,12 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
     fig.add_vline(x=sell_day, line_width=3, line_dash="dash", line_color="red", row=1, col=1)
 
     # Plot for daily return in bar plot. Row 2.
+    colors = ['green' if x >= 0 else 'red' for x in data['Daily_Return']]
     fig.add_trace(Bar(
         x=data["Date"],
         y=data["Daily_Return"],
         name= return_type.capitalize() + " Daily Return",
-        marker_color="tomato"
+        marker_color=colors
     ), row=2, col=1)
 
     # Plot for stock trand in Candlestick plot. Row 3.
@@ -109,25 +110,25 @@ def fig_indicators(data:DataFrame, max_profit:float):
     fig.add_trace(Indicator(
         mode = "number",
         value = max_profit,
-        title = {"text": "Max Profit Amount"},
+        title = {"text": "Max Profit Amount based on best buy/sell date"},
         number={"font": {"color": "green"}}), row=1, col=1)
     
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['upward']['count'],
-        title = {"text": "Upward occurances"},
+        title = {"text": "Count of upward trends"},
         number={"font": {"color": "green"}}), row=2, col=2)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['upward']['total_days'],
-        title = {"text": "Upward total days"},
+        title = {"text": "Count of each upward days"},
         number={"font": {"color": "green"}},), row=3, col=2)
         
     fig.add_trace(Indicator(
             mode = "number",
             value = price_runs['upward']['highest'],
-            title = {"text": "Maximum upward days"},
+            title = {"text": "Highest count of upward day in a single trend"},
             number={"font": {"color": "green"}}), row=4, col=2)
 
     fig.add_trace(Indicator(

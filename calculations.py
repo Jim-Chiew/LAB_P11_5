@@ -132,7 +132,7 @@ def max_profitv3(data:DataFrame):
 def count_price_runs(data:DataFrame):
     """
     1. Count: Number of consecutive upward or downward trends.
-        A sequence of 2 or more days moving in the same direction (upward or downward) counts as 1 trend.
+        A sequence of 1 or more days moving in the same direction (upward or downward) counts as 1 trend.
     2. Total_Days: Total number of days that were upward or downward, respectively.
     3. Highest: The longest streak of consecutive upward or downward days in a single trend.
     """

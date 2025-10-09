@@ -35,7 +35,7 @@ app.layout = html.Div(children=[
         id='end_date',   
         month_format='Do MMM, YY',
         placeholder='Do MMM, YY',
-        date=date(2024,1,15),
+        date=date(2024,1,31),
         display_format="DD/MM/YYYY"
     ),
 
