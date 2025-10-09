@@ -4,11 +4,11 @@ from pandas import DataFrame, Timestamp
 from calculations import count_price_runs, compute_sma, compute_daily_returns
 
 
-def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timestamp, sma_window:int):
+def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timestamp, sma_window:int, return_type:str="simple"):
     """Generates main graph that contains 3 types of sub plots.
         1. Scatter plot that contains SMA, Close price and best day to buy/sell.
         2. Bar plot that shows daily returns.
-        3. Candlestick plot that shows stock trands.
+        3. Candlestick plot that shows stock trends.
 
     Args:
         data (DataFrame): Contains stock historical data
@@ -29,7 +29,7 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
                         )
 
     data = compute_sma(data, sma_window)
-    data = compute_daily_returns(data)
+    data = compute_daily_returns(data, return_type)
 
     # Plot for SMA in scatter plot. Row 1. 
     fig.add_trace(Scatter(
@@ -59,7 +59,7 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
     fig.add_trace(Bar(
         x=data["Date"],
         y=data["Daily_Return"],
-        name="Daily Return",
+        name= return_type.capitalize() + " Daily Return",
         marker_color="tomato"
     ), row=2, col=1)
 
@@ -94,44 +94,59 @@ def fig_indicators(data:DataFrame, max_profit:float):
     Returns:
         Figure (Figure): Returns a plotly figure object.
     """
-
-    fig = Figure()
+    fig = make_subplots(
+        rows=4, 
+        cols=2,
+        specs=[
+            [{"type": "domain", "colspan": 2}, None], 
+            [{"type": "domain"}, {"type": "domain"}], 
+            [{"type": "domain"}, {"type": "domain"}], 
+            [{"type": "domain"}, {"type": "domain"}],
+            ]
+        )
 
     price_runs = count_price_runs(data)
     fig.add_trace(Indicator(
         mode = "number",
         value = max_profit,
         title = {"text": "Max Profit Amount"},
-        number={"font": {"color": "green"}},
-        domain = {'x': [0, 1], 'y': [0.67, 1]}))
+        number={"font": {"color": "green"}}), row=1, col=1)
     
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['upward']['count'],
         title = {"text": "Upward occurances"},
-        number={"font": {"color": "green"}},
-        domain = {'x': [0, 0.5], 'y': [0.33, 0.67]}))
+        number={"font": {"color": "green"}}), row=2, col=2)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['upward']['total_days'],
         title = {"text": "Upward total days"},
-        number={"font": {"color": "green"}},
-        domain = {'x': [0.5, 1], 'y': [0.33, 0.67]}))
+        number={"font": {"color": "green"}},), row=3, col=2)
+        
+    fig.add_trace(Indicator(
+            mode = "number",
+            value = price_runs['upward']['highest'],
+            title = {"text": "Maximum upward days"},
+            number={"font": {"color": "green"}}), row=4, col=2)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['count'],
         title = {"text": "Downward occurances"},
-        number={"font": {"color": "red"}},
-        domain = {'x': [0, 0.5], 'y': [0, 0.33]}))
+        number={"font": {"color": "red"}}), row=2, col=1)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['total_days'],
         title = {"text": "Downward total days"},
-        number={"font": {"color": "red"}},
-        domain = {'x': [0.5, 1], 'y': [0, 0.33]}))
+        number={"font": {"color": "red"}}), row=3, col=1)
+
+    fig.add_trace(Indicator(
+        mode = "number",
+        value = price_runs['downward']['highest'],
+        title = {"text": "Maximum downward days"},
+        number={"font": {"color": "red"}}), row=4, col=1)
     
     fig.update_layout(
     height=600

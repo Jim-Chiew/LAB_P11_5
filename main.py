@@ -6,8 +6,6 @@ from calculations import max_profit
 
 # Default datas:
 ticker = "AMZN"
-start_date = '1990-01-01'
-end_date = '2024-08-1'
 
 app = Dash()
 app.layout = html.Div(children=[
@@ -25,18 +23,20 @@ app.layout = html.Div(children=[
     html.Label('Date Start'),
     dcc.DatePickerSingle(
         id='start_date', 
-        month_format='MMM Do, YY',
-        placeholder='MMM Do, YY',
-        date=date(1990,1,1)
+        month_format='Do MMM, YY',
+        placeholder='Do MMM, YY',
+        date=date(2024,1,1),
+        display_format="DD/MM/YYYY"
     ),
 
     html.Br(),
     html.Label('Date End'),
     dcc.DatePickerSingle(
         id='end_date',   
-        month_format='MMM Do, YY',
-        placeholder='MMM Do, YY',
-        date=date.today()
+        month_format='Do MMM, YY',
+        placeholder='Do MMM, YY',
+        date=date(2024,1,15),
+        display_format="DD/MM/YYYY"
     ),
 
     html.Br(),
@@ -49,6 +49,17 @@ app.layout = html.Div(children=[
             value=5,
             id="sma_window"
         ),
+    
+    dcc.Dropdown(
+        id='return_type',
+        options=[
+            {'label': 'Simple Returns', 'value': 'simple'},
+            {'label': 'Log Returns', 'value': 'log'},
+        ],
+        value='simple',  # default value
+        clearable=False,
+        style={'width': '200px'}
+    ),
 
     # Uses ID to identify graph for callback. 
     # Replaces the section with the associated graph 
@@ -68,11 +79,12 @@ app.layout = html.Div(children=[
     Input('start_date', 'date'),
     Input('end_date', 'date'),
     Input('sma_window', 'value'),
+    Input('return_type', 'value')
     )
-def update_line_fig(ticker, start_date, end_date, sma_window):
+def update_line_fig(ticker, start_date, end_date, sma_window, return_type):
     data = get_stock_data(ticker, start_date, end_date)
     max_prof, sell_date, buy_date = max_profit(data)
-    return fig_main_plot(data, ticker, buy_date, sell_date, int(sma_window)), fig_indicators(data, max_prof)
+    return fig_main_plot(data, ticker, buy_date, sell_date, int(sma_window), return_type), fig_indicators(data, max_prof)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0",debug=True)
