@@ -72,7 +72,9 @@ def max_profitv2(data:DataFrame):
 
 
 def max_profitv3(data:DataFrame):
+    """Enhanced max profit with single and multiple transactions - AGGRESSIVE APPROACH"""
     prices = data['Close'].tolist()
+    dates = data['Date'].tolist()
     
     # Single Transaction (buy once, sell once)
     min_price = float('inf')
@@ -91,42 +93,87 @@ def max_profitv3(data:DataFrame):
             buy_day_single = temp_buy_day
             sell_day_single = i
     
-    # Multiple Transactions (Record all profits)
+    # Multiple Transactions
     total_profit_multiple = 0
     transactions = []
-
-    # Peak-Valley approach
-    i = 0
-    n = len(prices)
     
-    while i < n - 1:
-        # Find valley (wait for price to stop decreasing)
-        while i < n - 1 and prices[i] >= prices[i + 1]:
+    # Strategy 1: Buy at every local minimum, sell at next local maximum
+    i = 0
+    while i < len(prices) - 1:
+        # Find local minimum (buy point)
+        while i < len(prices) - 1 and prices[i] >= prices[i + 1]:
             i += 1
         
-        if i >= n - 1:
+        if i >= len(prices) - 1:
             break
             
         buy_day = i
+        buy_price = prices[i]
         
-        # Find peak (wait for price to stop increasing)
+        # Find local maximum (sell point)  
         i += 1
-        while i < n - 1 and prices[i] <= prices[i + 1]:
+        while i < len(prices) - 1 and prices[i] <= prices[i + 1]:
             i += 1
             
         sell_day = i
-        profit = prices[sell_day] - prices[buy_day]
+        sell_price = prices[i]
         
-        # Only record profitable transactions
-        if profit > 0:
+        profit = sell_price - buy_price
+        
+        if profit > 0:  # Only profitable trades
             total_profit_multiple += profit
             transactions.append({
                 'buy_day': buy_day,
                 'sell_day': sell_day,
-                'profit': profit
+                'buy_date': dates[buy_day],
+                'sell_date': dates[sell_day],
+                'buy_price': buy_price,
+                'sell_price': sell_price,
+                'profit': profit,
+                'return_percent': (profit / buy_price) * 100
             })
+        
         i += 1
-    return max_profit_single, transactions, buy_day_single, sell_day_single, total_profit_multiple
+    
+    # If still no transactions, use the simple consecutive day approach as back up
+    if len(transactions) < 10:  # If too few transactions
+        for i in range(1, len(prices)):
+            if prices[i] > prices[i-1]:
+                profit = prices[i] - prices[i-1]
+                total_profit_multiple += profit
+                transactions.append({
+                    'buy_day': i-1,
+                    'sell_day': i,
+                    'buy_date': dates[i-1],
+                    'sell_date': dates[i],
+                    'buy_price': prices[i-1],
+                    'sell_price': prices[i],
+                    'profit': profit,
+                    'return_percent': (profit / prices[i-1]) * 100
+                })
+    
+    # Sort by date to see chronological distribution
+    transactions.sort(key=lambda x: x['buy_day'])
+    
+    # print(f"Total transactions found: {len(transactions)}")
+    # if transactions:
+    #     print(f"First transaction: {transactions[0]['buy_date']}")
+    #     print(f"Last transaction: {transactions[-1]['buy_date']}")
+    
+    return {
+        'max_profit_single': max_profit_single,
+        'buy_day_single': buy_day_single,
+        'sell_day_single': sell_day_single,
+        'buy_date_single': dates[buy_day_single],
+        'sell_date_single': dates[sell_day_single],
+        'buy_price_single': prices[buy_day_single],
+        'sell_price_single': prices[sell_day_single],
+        'total_profit_multiple': total_profit_multiple,
+        'transactions': transactions,
+        'average_profit_per_trade': total_profit_multiple / len(transactions) if transactions else 0,
+        'num_transactions': len(transactions),
+        'best_transaction': transactions[0] if transactions else None
+    }
 
 
 def count_price_runs(data:DataFrame):

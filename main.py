@@ -2,7 +2,7 @@ from datetime import date
 from dash import Dash, html, dcc, Input, callback, Output
 from yfinance_interface import get_stock_data
 from plots_interface import fig_main_plot, fig_indicators
-from calculations import max_profit
+from calculations import max_profitv3
 
 # Default datas:
 ticker = "AMZN"
@@ -70,6 +70,11 @@ app.layout = html.Div(children=[
     dcc.Graph(
         id='indicator_graph',
     ),
+
+    html.P([    
+    "1. Count of up/down trend: Number of consecutive upward or downward trends. A sequence of 1 or more days moving in the same direction (upward or downward) counts as 1 trend.", html.Br(),
+    "2. Highest count of up/down day in a single trend: The longest streak of consecutive upward or downward days in a single trend."]
+    ),
 ])
 
 @callback(
@@ -83,7 +88,11 @@ app.layout = html.Div(children=[
     )
 def update_line_fig(ticker, start_date, end_date, sma_window, return_type):
     data = get_stock_data(ticker, start_date, end_date)
-    max_prof, sell_date, buy_date = max_profit(data)
+    max_profit = max_profitv3(data)
+
+    # Buy_date_single do not work when passing it to other functions down the line.
+    # Use buy_day_single instead!!!
+    buy_date, sell_date, max_prof = max_profit['buy_date_single'], max_profit['sell_date_single'], max_profit['max_profit_single']
     return fig_main_plot(data, ticker, buy_date, sell_date, int(sma_window), return_type), fig_indicators(data, max_prof)
 
 if __name__ == '__main__':

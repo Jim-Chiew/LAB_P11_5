@@ -134,19 +134,19 @@ def fig_indicators(data:DataFrame, max_profit:float):
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['count'],
-        title = {"text": "Downward occurances"},
+        title = {"text": "Count of downward trends"},
         number={"font": {"color": "red"}}), row=2, col=1)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['total_days'],
-        title = {"text": "Downward total days"},
+        title = {"text": "Count of each downward days"},
         number={"font": {"color": "red"}}), row=3, col=1)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['highest'],
-        title = {"text": "Maximum downward days"},
+        title = {"text": "Highest count of upwadownward day in a single trend"},
         number={"font": {"color": "red"}}), row=4, col=1)
     
     fig.update_layout(
