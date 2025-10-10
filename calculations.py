@@ -141,17 +141,20 @@ def count_price_runs(data):
         if run_type == current_run['type']:                         # +1 if same run type
             current_run['length'] += 1
         else:
-            if current_run['type'] == 'up':                         # store completed run
-                up_runs.append(current_run['length'])               # compute runs in O(n)
+            if current_run['type'] == 'up':
+                if current_run['length'] >= 2:                         # store completed run
+                    up_runs.append(current_run['length'])
             elif current_run['type'] == 'down':
-                down_runs.append(current_run['length'])
+                if current_run['length'] >= 2:
+                    down_runs.append(current_run['length'])
             current_run = {'type': run_type, 'length': 1 if run_type != 'flat' else 0}
 
     # Append the last run if it was an up or down run
-    if current_run['type'] == 'up':
-        up_runs.append(current_run['length'])
-    elif current_run['type'] == 'down':
-        down_runs.append(current_run['length'])
+    if current_run['length'] >= 2:
+        if current_run['type'] == 'up':
+            up_runs.append(current_run['length'])
+        elif current_run['type'] == 'down':
+            down_runs.append(current_run['length'])
 
 
     runs['upward']['count'] = len(up_runs)                          # summarize runs

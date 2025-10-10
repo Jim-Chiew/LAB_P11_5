@@ -12,7 +12,7 @@ from lstm import lstm
 # Default datas:
 ticker = "AMZN"
 start_date = '1990-01-01'
-end_date = '2024-08-1'
+end_date = '2024-08-01'
 
 app = Dash()
 app.layout = html.Div(children=[
@@ -87,7 +87,12 @@ app.layout = html.Div(children=[
     Input('return_type', 'value')
     )
 def update_line_fig(ticker, start_date, end_date, sma_window, return_type):
-    data = get_stock_data(ticker, start_date, end_date)
+    data = get_stock_data(ticker, start_date, end_date)         # Fetch stock data
+    if data is None or data.empty:
+        from plotly import graph_objs as go
+        empty_fig = go.Figure()
+        empty_fig.update_layout(title="No data available for this selection.")
+        return empty_fig, empty_fig
     max_prof, sell_date, buy_date = max_profit(data)
     return fig_main_plot(data, ticker, buy_date, sell_date, int(sma_window), return_type), fig_indicators(data, max_prof, return_type)  # ADD return_type here
 
