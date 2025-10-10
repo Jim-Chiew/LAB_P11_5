@@ -31,7 +31,6 @@ def max_profitv2(data):
     return profit, buy_date, sell_date
 
 def max_profitv3(data):
-    """Enhanced max profit with single and multiple transactions - AGGRESSIVE APPROACH"""
     prices = data['Close'].tolist()
     dates = data['Date'].tolist()
     
