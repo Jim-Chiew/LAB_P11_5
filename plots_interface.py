@@ -1,10 +1,10 @@
-from plotly.graph_objects import Scatter, Bar, Candlestick, Figure, Indicator
+from plotly.graph_objects import Scatter, Bar, Candlestick, Indicator, Figure
 from plotly.subplots import make_subplots
 from pandas import DataFrame, Timestamp
 from calculations import count_price_runs, compute_sma, compute_daily_returns
 
 
-def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timestamp, sma_window:int, return_type:str="simple"):
+def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timestamp, sma_window:int, return_type:str="simple") -> Figure:
     """Generates main graph that contains 3 types of sub plots.
         1. Scatter plot that contains SMA, Close price and best day to buy/sell.
         2. Bar plot that shows daily returns.
@@ -85,7 +85,7 @@ def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timest
     return fig
 
 
-def fig_indicators(data:DataFrame, max_profit:float):
+def fig_indicators(data:DataFrame, max_profit:float) -> Figure:
     """Creates an indicator graph. Numbers only. 
 
     Args:
@@ -154,7 +154,3 @@ def fig_indicators(data:DataFrame, max_profit:float):
     )
     
     return fig
-
-
-if __name__ == "__main__":
-    pass

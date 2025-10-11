@@ -1,19 +1,19 @@
-from pandas import DataFrame
-import numpy as np
+from pandas import DataFrame, Timestamp
+from numpy import nan, errstate, where, divide, log, isfinite
 
 
-def compute_sma(data:DataFrame, window:int=20):
+def compute_sma(data:DataFrame, window:int=20) -> DataFrame:
     # data[f'SMA'] = data['Close'].rolling(window=window).mean()  # validation code
     window_sum = sum(data['Close'].iloc[:window])                 # sliding window to get SMA
     results = [window_sum / window]
     for i in range(window, len(data)):
         window_sum += data['Close'].iloc[i] - data['Close'].iloc[i - window]
         results.append(window_sum / window)
-    data['SMA'] = [np.nan] * (window - 1) + results            # NAN for (n-1) data that is not computable
+    data['SMA'] = [nan] * (window - 1) + results            # NAN for (n-1) data that is not computable
     return data
 
 
-def compute_daily_returns(data:DataFrame, return_type:str='both'):
+def compute_daily_returns(data:DataFrame, return_type:str='both') -> DataFrame:
     """
     Calculate daily returns with multiple options
     
@@ -33,19 +33,19 @@ def compute_daily_returns(data:DataFrame, return_type:str='both'):
         shifted_prices = data['Close'].shift(1).values
         
         # Calculate ratio and handle division by zero
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ratio = np.divide(close_prices, shifted_prices)
-            log_returns = np.log(ratio)
+        with errstate(divide='ignore', invalid='ignore'):
+            ratio = divide(close_prices, shifted_prices)
+            log_returns = log(ratio)
         
         # Replace inf/-inf with NaN (from division by zero or log(0))
-        log_returns = np.where(np.isfinite(log_returns), log_returns, np.nan)
+        log_returns = where(isfinite(log_returns), log_returns, nan)
         
         data['Daily_Return'] = log_returns
     
     return data
 
 
-def max_profit(data:DataFrame):
+def git_profit(data:DataFrame) -> tuple[DataFrame, Timestamp, Timestamp]:
     min_price = max_profit = temp_buy_day = data.iloc[0]["Close"]
     buy_day = sell_day = temp_buy_day = data.iloc[0]["Date"]
     for _, row_data in data.iterrows():
@@ -61,7 +61,7 @@ def max_profit(data:DataFrame):
     return max_profit, buy_day, sell_day
 
 
-def max_profitv2(data:DataFrame):
+def max_profitv2(data:DataFrame) -> tuple[float, Timestamp, Timestamp]:
     max_data = data.loc[data["Close"].idxmax()]
     min_data = data.loc[data["Close"].idxmin()]
 
@@ -71,7 +71,7 @@ def max_profitv2(data:DataFrame):
     return profit, buy_date, sell_date
 
 
-def max_profitv3(data:DataFrame):
+def max_profitv3(data:DataFrame) -> dict:
     """Enhanced max profit with single and multiple transactions - AGGRESSIVE APPROACH"""
     prices = data['Close'].tolist()
     dates = data['Date'].tolist()
@@ -176,7 +176,7 @@ def max_profitv3(data:DataFrame):
     }
 
 
-def count_price_runs(data:DataFrame):
+def count_price_runs(data:DataFrame) -> dict:
     """
     1. Count: Number of consecutive upward or downward trends.
         A sequence of 1 or more days moving in the same direction (upward or downward) counts as 1 trend.
@@ -200,18 +200,20 @@ def count_price_runs(data:DataFrame):
         if run_type == current_run['type']:                         # +1 if same run type
             current_run['length'] += 1
         else:
-            if current_run['type'] == 'up':                         # store completed run
-                up_runs.append(current_run['length'])               # compute runs in O(n)
+            if current_run['type'] == 'up':
+                if current_run['length'] >= 2:                         # store completed run
+                    up_runs.append(current_run['length'])
             elif current_run['type'] == 'down':
-                down_runs.append(current_run['length'])
+                if current_run['length'] >= 2:
+                    down_runs.append(current_run['length'])
             current_run = {'type': run_type, 'length': 1 if run_type != 'flat' else 0}
 
     # Append the last run if it was an up or down run
-    if current_run['type'] == 'up':
-        up_runs.append(current_run['length'])
-    elif current_run['type'] == 'down':
-        down_runs.append(current_run['length'])
-
+    if current_run['length'] >= 2:
+        if current_run['type'] == 'up':
+            up_runs.append(current_run['length'])
+        elif current_run['type'] == 'down':
+            down_runs.append(current_run['length'])
     runs['upward']['count'] = len(up_runs)                          # summarize runs
     runs['upward']['total_days'] = sum(up_runs)                     # update dictionary in O(1)
     runs['downward']['count'] = len(down_runs)                      

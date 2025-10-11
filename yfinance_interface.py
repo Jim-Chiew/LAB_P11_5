@@ -1,7 +1,7 @@
 from yfinance import download
+from pandas import DataFrame
 
-
-def get_stock_data(ticker:str, start_date:str, end_date:str):
+def get_stock_data(ticker:str, start_date:str, end_date:str) -> DataFrame:
     """Get historical stock data from yfinance library.
 
     Args:
