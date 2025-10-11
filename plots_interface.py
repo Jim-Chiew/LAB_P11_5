@@ -1,18 +1,37 @@
 from plotly.graph_objects import Scatter, Bar, Candlestick, Figure, Indicator
 from plotly.subplots import make_subplots
+from pandas import DataFrame, Timestamp
 from calculations import count_price_runs, compute_sma, compute_daily_returns, max_profitv3
 
-def fig_line_plot(data, ticker, buy_day, sell_day, sma_window):
-    # Create only 3 graphs as originally intended
+
+def fig_main_plot(data:DataFrame, ticker:str, buy_day:Timestamp, sell_day:Timestamp, sma_window:int, return_type:str="simple"):
+    """Generates main graph that contains 3 types of sub plots.
+        1. Scatter plot that contains SMA, Close price and best day to buy/sell.
+        2. Bar plot that shows daily returns.
+        3. Candlestick plot that shows stock trends.
+
+    Args:
+        data (DataFrame): Contains stock historical data
+        ticker (str): Ticker of the company you want to view the stock trend of 
+        buy_day (Timestamp): Best day to buy the stock.
+        sell_day (Timestamp): Best day to sell the stock
+        sma_window (int): Defines number of days for SMA calculation.
+
+    Returns:
+        Figure (Figure): Returns a plotly figure object.
+    """
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
+                        # Defines how big each section is. total 1. 
+                        # Exp: [0.5, 0.5] will have 2 row with equal space
                         row_heights=[0.5, 0.2, 0.3],
                         vertical_spacing=0.05, 
-                        subplot_titles=("SMA and closing price", "Daily returns", "Trends"))
+                        subplot_titles=("SMA and closing price", "Daily returns", "Trends")
+                        )
 
     data = compute_sma(data, sma_window)
-    data = compute_daily_returns(data)
+    data = compute_daily_returns(data, return_type)
 
-    # SMA
+    # Plot for SMA in scatter plot. Row 1. 
     fig.add_trace(Scatter(
         x=data["Date"],
         y=data["SMA"],
@@ -22,7 +41,7 @@ def fig_line_plot(data, ticker, buy_day, sell_day, sma_window):
         name="SMA",
     ), row=1, col=1)
 
-    # Closing
+    # Plot for close date in scatter plot. Row 1.
     fig.add_trace(Scatter(
         x=data["Date"],
         y=data["Close"],
@@ -32,15 +51,20 @@ def fig_line_plot(data, ticker, buy_day, sell_day, sma_window):
         name="Close"
     ), row=1, col=1)
 
-    # Daily return
+    # virtical line to indicate Buy/sell dates. in scatter plot. Row 1.  
+    fig.add_vline(x=buy_day, line_width=3, line_dash="dash", line_color="green", row=1, col=1)
+    fig.add_vline(x=sell_day, line_width=3, line_dash="dash", line_color="red", row=1, col=1)
+
+    # Plot for daily return in bar plot. Row 2.
+    colors = ['green' if x >= 0 else 'red' for x in data['Daily_Return']]
     fig.add_trace(Bar(
         x=data["Date"],
         y=data["Daily_Return"],
-        name="Daily Return",
-        marker_color="tomato"
+        name= return_type.capitalize() + " Daily Return",
+        marker_color=colors
     ), row=2, col=1)
 
-    # Candlestick (row 3)
+    # Plot for stock trand in Candlestick plot. Row 3.
     fig.add_trace(Candlestick(
         x=data["Date"],
         open=data["Open"],
@@ -50,21 +74,18 @@ def fig_line_plot(data, ticker, buy_day, sell_day, sma_window):
         name="Candlestick"
     ), row=3, col=1)
 
-    fig.add_vline(x=buy_day, line_width=3, line_dash="dash", line_color="green", row=1, col=1)
-    fig.add_vline(x=sell_day, line_width=3, line_dash="dash", line_color="red", row=1, col=1)
-
     fig.update_layout(
-        title=ticker + " Stock Information:",
-        xaxis_rangeslider_visible=False,
-        margin=dict(l=20, r=15, t=50, b=0),
-        height=1500,
-        width=1200  # ADD FIXED WIDTH FOR CONSISTENCY
+    title=ticker + " Stock Information:",
+    xaxis_rangeslider_visible=False,
+    # Modify graph margin to remove/minimize empty spaces of the window.  
+    margin=dict(l=20, r=15, t=50, b=0),
+    height=1500
     )
 
     return fig
 
-def fig_profit_analysis(data, ticker):
-    """Profit analysis graph showing ALL multiple transactions"""
+def fig_profit_analysis(data:DataFrame, ticker:str):
+    """Generate Profit analysis graph showing all single and multiple transactions"""    
     results = max_profitv3(data)
     prices = data['Close'].tolist()
     dates = data['Date'].tolist()
@@ -80,18 +101,19 @@ def fig_profit_analysis(data, ticker):
         line=dict(color='darkblue', width=2)
     ))
     
-    # Single transaction markers (Best overall)
+    # Single transaction markers (Best Buy/Sell overall)
     fig.add_trace(Scatter(
         x=[dates[results['buy_day_single']], dates[results['sell_day_single']]], 
         y=[prices[results['buy_day_single']], prices[results['sell_day_single']]],
         mode='markers+text', 
         name='Single Transaction',
         marker=dict(size=14, color=['red', 'green'], symbol='diamond'),
-        text=['BUY', 'SELL'], 
-        textposition="top center"
+        text=['BUY', 'SELL'],
+        textfont=dict(color='red'),
+        textposition="top center", textfont_size=20, 
     ))
     
-    # Show ALL transactions without limiting
+    # Show every other transactions for within the selected period
     for i, transaction in enumerate(results['transactions']):
         fig.add_trace(Scatter(
             x=[dates[transaction['buy_day']], dates[transaction['sell_day']]],
@@ -99,8 +121,9 @@ def fig_profit_analysis(data, ticker):
             mode='markers+text', 
             name='Multi Transaction' if i == 0 else '',
             marker=dict(size=6, color=['crimson', 'lime'], symbol=['triangle-down', 'triangle-up']),
-            text=['BUY', 'SELL'], 
-            textposition="top center",
+            # text=['BUY', 'SELL'],
+            # textfont=dict(color='green'),
+            # textposition="top center", textfont_size=20, 
             showlegend=(i == 0)
         ))
     
@@ -119,51 +142,76 @@ def fig_profit_analysis(data, ticker):
     
     return fig
 
-def fig_indicators(data, max_profit):
-    fig = Figure()
+def fig_indicators(data:DataFrame, max_profit:float):
+    """Creates an indicator graph. Numbers only. 
+
+    Args:
+        data (DataFrame): Contains stock historical data
+        max_profit (float): Max profit value
+
+    Returns:
+        Figure (Figure): Returns a plotly figure object.
+    """
+    fig = make_subplots(
+        rows=4, 
+        cols=2,
+        specs=[
+            [{"type": "domain", "colspan": 2}, None], 
+            [{"type": "domain"}, {"type": "domain"}], 
+            [{"type": "domain"}, {"type": "domain"}], 
+            [{"type": "domain"}, {"type": "domain"}],
+            ]
+        )
 
     price_runs = count_price_runs(data)
     fig.add_trace(Indicator(
         mode = "number",
         value = max_profit,
-        title = {"text": "Max Profit Amount"},
-        number={"font": {"color": "green"}},
-        domain = {'x': [0, 1], 'y': [0.67, 1]}))
+        title = {"text": "Max Profit Amount based on best buy/sell date"},
+        number={"font": {"color": "green"}}), row=1, col=1)
     
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['upward']['count'],
-        title = {"text": "Upward occurances"},
-        number={"font": {"color": "green"}},
-        domain = {'x': [0, 0.5], 'y': [0.33, 0.67]}))
+        title = {"text": "Count of upward trends"},
+        number={"font": {"color": "green"}}), row=2, col=2)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['upward']['total_days'],
-        title = {"text": "Upward total days"},
-        number={"font": {"color": "green"}},
-        domain = {'x': [0.5, 1], 'y': [0.33, 0.67]}))
+        title = {"text": "Count of each upward days"},
+        number={"font": {"color": "green"}},), row=3, col=2)
+        
+    fig.add_trace(Indicator(
+            mode = "number",
+            value = price_runs['upward']['highest'],
+            title = {"text": "Highest count of upward day in a single trend"},
+            number={"font": {"color": "green"}}), row=4, col=2)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['count'],
-        title = {"text": "Downward occurances"},
-        number={"font": {"color": "red"}},
-        domain = {'x': [0, 0.5], 'y': [0, 0.33]}))
+        title = {"text": "Count of downward trends"},
+        number={"font": {"color": "red"}}), row=2, col=1)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['total_days'],
-        title = {"text": "Downward total days"},
-        number={"font": {"color": "red"}},
-        domain = {'x': [0.5, 1], 'y': [0, 0.33]}))
+        title = {"text": "Count of each downward days"},
+        number={"font": {"color": "red"}}), row=3, col=1)
+
+    fig.add_trace(Indicator(
+        mode = "number",
+        value = price_runs['downward']['highest'],
+        title = {"text": "Highest count of upwadownward day in a single trend"},
+        number={"font": {"color": "red"}}), row=4, col=1)
     
     fig.update_layout(
-        height=600,
-        width=1200  # ADDED: Same width as other graphs
+    height=600
     )
     
     return fig
+
 
 if __name__ == "__main__":
     pass
