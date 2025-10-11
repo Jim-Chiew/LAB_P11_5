@@ -45,33 +45,7 @@ def compute_daily_returns(data:DataFrame, return_type:str='both') -> DataFrame:
     return data
 
 
-def git_profit(data:DataFrame) -> tuple[DataFrame, Timestamp, Timestamp]:
-    min_price = max_profit = temp_buy_day = data.iloc[0]["Close"]
-    buy_day = sell_day = temp_buy_day = data.iloc[0]["Date"]
-    for _, row_data in data.iterrows():
-        price = row_data["Close"]
-        if  price < min_price:
-            min_price = price
-            temp_buy_day = row_data["Date"]
-        
-        if price - min_price > max_profit:
-            max_profit = price - min_price
-            buy_day = temp_buy_day
-            sell_day = row_data["Date"]
-    return max_profit, buy_day, sell_day
-
-
-def max_profitv2(data:DataFrame) -> tuple[float, Timestamp, Timestamp]:
-    max_data = data.loc[data["Close"].idxmax()]
-    min_data = data.loc[data["Close"].idxmin()]
-
-    profit = max_data["Close"] - min_data["Close"]
-    buy_date = min_data["Date"]
-    sell_date = max_data["Date"]
-    return profit, buy_date, sell_date
-
-
-def max_profitv3(data:DataFrame) -> dict:
+def max_profit(data:DataFrame) -> dict:
     """Enhanced max profit with single and multiple transactions - AGGRESSIVE APPROACH"""
     prices = data['Close'].tolist()
     dates = data['Date'].tolist()
