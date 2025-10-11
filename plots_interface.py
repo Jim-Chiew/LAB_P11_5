@@ -244,37 +244,37 @@ def fig_indicators(data:DataFrame, max_profit:float) -> Figure:
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['upward']['count'],
-        title = {"text": "Count of upward trends"},
+        title = {"text": "Number of upward trends"},
         number={"font": {"color": "green"}}), row=2, col=2)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['upward']['total_days'],
-        title = {"text": "Count of each upward days"},
+        title = {"text": "Total upward days in trends"},
         number={"font": {"color": "green"}},), row=3, col=2)
         
     fig.add_trace(Indicator(
             mode = "number",
             value = price_runs['upward']['highest'],
-            title = {"text": "Highest count of upward day in a single trend"},
+            title = {"text": "Highest number of upward day in a single trend"},
             number={"font": {"color": "green"}}), row=4, col=2)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['count'],
-        title = {"text": "Count of downward trends"},
+        title = {"text": "Number of downward trends"},
         number={"font": {"color": "red"}}), row=2, col=1)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['total_days'],
-        title = {"text": "Count of each downward days"},
+        title = {"text": "Total downward days in trends"},
         number={"font": {"color": "red"}}), row=3, col=1)
 
     fig.add_trace(Indicator(
         mode = "number",
         value = price_runs['downward']['highest'],
-        title = {"text": "Highest count of upwadownward day in a single trend"},
+        title = {"text": "Highest number of downward day in a single trend"},
         number={"font": {"color": "red"}}), row=4, col=1)
     
     fig.update_layout(
