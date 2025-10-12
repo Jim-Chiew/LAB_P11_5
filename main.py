@@ -1,5 +1,5 @@
 from datetime import date
-from dash import Dash, html, dcc, Input, callback, Output
+from dash import Dash, html, dcc, Input, callback, Output, ctx
 from pandas import to_datetime
 from yfinance_interface import get_stock_data
 from plots_interface import fig_main_plot, fig_indicators, error_page
@@ -62,6 +62,14 @@ app.layout = html.Div(children=[
         style={'width': '200px'}
     ),
 
+    html.Br(),
+    dcc.Checklist(
+        id="toggle",
+        options={"Toggle": "Toggle Multiple Buy/Sell"},
+        value=["Toggle"]
+    ),
+    html.Br(),
+
     # Uses ID to identify graph for callback. 
     # Replaces the section with the associated graph 
     dcc.Graph(
@@ -85,9 +93,10 @@ app.layout = html.Div(children=[
     Input('start_date', 'date'),
     Input('end_date', 'date'),
     Input('sma_window', 'value'),
-    Input('return_type', 'value')
+    Input('return_type', 'value'),
+    Input('toggle', 'value')
     )
-def update_line_fig(ticker, start_date, end_date, sma_window, return_type):
+def update_line_fig(ticker, start_date, end_date, sma_window, return_type, toggle):
     data = get_stock_data(ticker, start_date, end_date)
     if data is None or data.empty or len(data) == 0:
         return error_page("Dates chosen provides no data"), error_page("")
@@ -102,7 +111,7 @@ def update_line_fig(ticker, start_date, end_date, sma_window, return_type):
     if delta_days < sma_window:         # Check if SMA window > date range
         return error_page(f"Selected range is {delta_days} days, but SMA window is {sma_window} days. Please choose a smaller SMA window or a larger date range."), error_page("")
    
-    return fig_main_plot(data, ticker, result, int(sma_window), return_type), fig_indicators(data, result['max_profit_single'])
+    return fig_main_plot(data, ticker, result, int(sma_window), return_type, bool(toggle)), fig_indicators(data, result['max_profit_single'])
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0",debug=True)

@@ -4,13 +4,13 @@ from pandas import DataFrame
 from calculations import count_price_runs, compute_sma, compute_daily_returns, max_profit_multiple
 
 
-def fig_main_plot(data:DataFrame, ticker:str, max_profit:dict, sma_window:int, return_type:str="simple") -> Figure:
+def fig_main_plot(data:DataFrame, ticker:str, max_profit:dict, sma_window:int, return_type:str, show_multi_buy_sell:bool) -> Figure:
     """Generates main graph that contains 3 types of sub plots.
         1. Scatter plot that contains SMA, Close price and best day to buy/sell.
         2. Bar plot that shows daily returns.
         3. Candlestick plot that shows stock trends.
 
-    Args:
+    Args
         data (DataFrame): Contains stock historical data
         ticker (str): Ticker of the company you want to view the stock trend of 
         buy_day (Timestamp): Best day to buy the stock.
@@ -93,42 +93,42 @@ def fig_main_plot(data:DataFrame, ticker:str, max_profit:dict, sma_window:int, r
     ), row=3, col=1)
 
     # Plots multiple buy/sell in main scatter plot. row 1
-    for index, output in enumerate(max_profit_multiple(data, max_profit)):
-        buy_date, buy_price, sell_date, sell_price = output
-        fig.add_annotation(
-            x=buy_date, y=buy_price,
-            text=f"BUY{index+1}",  # Number the transactions
-            showarrow=True, 
-            arrowhead=2, 
-            arrowsize=0.7,
-            arrowcolor="crimson", 
-            bgcolor="white", 
-            bordercolor="crimson",
-            font=dict(size=10, color="crimson")
-        )
+    if show_multi_buy_sell:
+        for index, output in enumerate(max_profit_multiple(data, max_profit)):
+            buy_date, buy_price, sell_date, sell_price = output
+            fig.add_annotation(
+                x=buy_date, y=buy_price,
+                text=f"BUY{index+1}",  # Number the transactions
+                showarrow=True, 
+                arrowhead=2, 
+                arrowsize=0.7,
+                arrowcolor="crimson", 
+                bgcolor="white", 
+                bordercolor="crimson",
+                font=dict(size=10, color="crimson")
+            )
 
-        fig.add_annotation(
-            x=sell_date, y=sell_price,
-            text=f"SELL{index+1}",  # Number the transactions
-            showarrow=True, 
-            arrowhead=2, 
-            arrowsize=0.7,
-            arrowcolor="lime", 
-            bgcolor="white", 
-            bordercolor="lime", 
-            font=dict(size=10, color="lime")
-        )
+            fig.add_annotation(
+                x=sell_date, y=sell_price,
+                text=f"SELL{index+1}",  # Number the transactions
+                showarrow=True, 
+                arrowhead=2, 
+                arrowsize=0.7,
+                arrowcolor="lime", 
+                bgcolor="white", 
+                bordercolor="lime", 
+                font=dict(size=10, color="lime")
+            )
 
-        fig.add_trace(Scatter(
-            x=[buy_date, sell_date],
-            y=[buy_price, sell_price],
-            mode='markers',
-            name='Multi Transaction' if index == 0 else '',
-            marker=dict(size=8, color=['crimson', 'lime'], 
-                       symbol=['triangle-down', 'triangle-up']),
-            showlegend=(index == 0)
-        ))
-    
+            fig.add_trace(Scatter(
+                x=[buy_date, sell_date],
+                y=[buy_price, sell_price],
+                mode='markers',
+                name='Multi Transaction' if index == 0 else '',
+                marker=dict(size=8, color=['crimson', 'lime'], 
+                        symbol=['triangle-down', 'triangle-up']),
+                showlegend=(index == 0)
+            ))
 
     fig.update_layout(
     title=ticker + " Stock Information:",
