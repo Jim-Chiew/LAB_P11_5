@@ -1,19 +1,26 @@
-from pandas import DataFrame
-import numpy as np
+import pandas as pd
+import numpy as np  # Added import
+from pandas import DataFrame, Timestamp
+from numpy import nan, errstate, where, divide, log, isfinite
 
-
-def compute_sma(data:DataFrame, window:int=20):
+def compute_sma(data:DataFrame, window:int=20) -> DataFrame:
     # data[f'SMA'] = data['Close'].rolling(window=window).mean()  # validation code
+
+    # Check if window is larger than available data
+    if len(data) < window:
+        # If not enough data, return all NaN or handle differently
+        data['SMA'] = np.nan
+        return data
+    
     window_sum = sum(data['Close'].iloc[:window])                 # sliding window to get SMA
     results = [window_sum / window]
     for i in range(window, len(data)):
         window_sum += data['Close'].iloc[i] - data['Close'].iloc[i - window]
         results.append(window_sum / window)
-    data['SMA'] = [np.nan] * (window - 1) + results            # NAN for (n-1) data that is not computable
+    data['SMA'] = [nan] * (window - 1) + results            # NAN for (n-1) data that is not computable
     return data
 
-
-def compute_daily_returns(data:DataFrame, return_type:str='both'):
+def compute_daily_returns(data:DataFrame, return_type:str='both') -> DataFrame:
     """
     Calculate daily returns with multiple options
     
@@ -33,49 +40,56 @@ def compute_daily_returns(data:DataFrame, return_type:str='both'):
         shifted_prices = data['Close'].shift(1).values
         
         # Calculate ratio and handle division by zero
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ratio = np.divide(close_prices, shifted_prices)
-            log_returns = np.log(ratio)
+        with errstate(divide='ignore', invalid='ignore'):
+            ratio = divide(close_prices, shifted_prices)
+            log_returns = log(ratio)
         
         # Replace inf/-inf with NaN (from division by zero or log(0))
-        log_returns = np.where(np.isfinite(log_returns), log_returns, np.nan)
+        log_returns = where(isfinite(log_returns), log_returns, nan)
         
         data['Daily_Return'] = log_returns
     
     return data
 
-
-def max_profit(data:DataFrame):
-    min_price = max_profit = temp_buy_day = data.iloc[0]["Close"]
-    buy_day = sell_day = temp_buy_day = data.iloc[0]["Date"]
-    for _, row_data in data.iterrows():
-        price = row_data["Close"]
-        if  price < min_price:
-            min_price = price
-            temp_buy_day = row_data["Date"]
-        
-        if price - min_price > max_profit:
-            max_profit = price - min_price
-            buy_day = temp_buy_day
-            sell_day = row_data["Date"]
-    return max_profit, buy_day, sell_day
-
-
-def max_profitv2(data:DataFrame):
-    max_data = data.loc[data["Close"].idxmax()]
-    min_data = data.loc[data["Close"].idxmin()]
-
-    profit = max_data["Close"] - min_data["Close"]
-    buy_date = min_data["Date"]
-    sell_date = max_data["Date"]
-    return profit, buy_date, sell_date
-
-
-def max_profitv3(data:DataFrame):
-
-    prices = data['Close'].tolist()
-    dates = data['Date'].tolist()
+def max_profit_edge_case(data):   
+    # Edge case handling: Validate input data before processing
+    if data is None or data.empty or len(data) == 0:
+        return create_empty_result("No data provided")
     
+    # Check for required columns
+    required_columns = ['Date', 'Close']
+    missing_columns = [col for col in required_columns if col not in data.columns]
+    if missing_columns:
+        return create_empty_result(f"Missing required columns: {missing_columns}")
+    
+    # Check for minimum data points
+    if len(data) < 2:
+        return create_empty_result("Need at least 2 data points for analysis")
+    
+    # Check for valid data types and NaN values
+    try:
+        prices = data['Close'].tolist()
+        dates = data['Date'].tolist()
+        
+        # Check for NaN or invalid values in prices
+        if any(not isinstance(price, (int, float)) or pd.isna(price) for price in prices):
+            return create_empty_result("Invalid price data contains NaN or non-numeric values")
+            
+    except (KeyError, TypeError, ValueError) as e:
+        return create_empty_result(f"Data processing error: {str(e)}")
+    
+    # Check for edge case of all zero/negative prices
+    if all(price <= 0 for price in prices):
+        # Process anyway but flag as edge case
+        result = max_profit(prices, dates)
+        result['data_quality'] = 'edge_case'
+        result['issue'] = "All prices are zero or negative"
+        return result
+    
+    # If all validations pass, proceed with original logic
+    return max_profit(prices, dates)
+
+def max_profit(prices, dates):
     # Single Transaction (buy once, sell once)
     min_price = float('inf')
     max_profit_single = 0
@@ -99,15 +113,17 @@ def max_profitv3(data:DataFrame):
     total_profit_multiple = 0
     transactions = []
     
-    # Strategy 1: Buy at every local minimum, sell at next local maximum
+    # Buy at every local minimum, sell at next local maximum
     i = 0
-    while i < len(prices) - 1:
+    n = len(prices)  # Store length for efficiency
+    
+    while i < n - 1:
         # Find local minimum (buy point)
-        while i < len(prices) - 1 and prices[i] >= prices[i + 1]:
+        while i < n - 1 and prices[i] >= prices[i + 1]:
             i += 1 # Move forward while prices are decreasing
         
         # Exit if reach end of price list
-        if i >= len(prices) - 1:
+        if i >= n - 1:
             break
             
         buy_day = i             # Found local minimum - buy day
@@ -115,11 +131,19 @@ def max_profitv3(data:DataFrame):
         
         # Find local maximum (sell point)  
         i += 1      # Move to next day after buying
-        while i < len(prices) - 1 and prices[i] <= prices[i + 1]:
+        
+        if i >= n:
+            break
+            
+        while i < n - 1 and prices[i] <= prices[i + 1]:
             i += 1  # Move forward while prices are increasing
             
         sell_day = i            # Found local maximum - sell day
-        sell_price = prices[i]  # Sell price at local maximum
+        
+        if sell_day >= n:
+            sell_day = n - 1
+            
+        sell_price = prices[sell_day]  # Sell price at local maximum
         
         profit = sell_price - buy_price
         
@@ -128,12 +152,12 @@ def max_profitv3(data:DataFrame):
             transactions.append({
                 'buy_day': buy_day,
                 'sell_day': sell_day,
-                'buy_date': dates[buy_day],
-                'sell_date': dates[sell_day],
+                'buy_date': dates[buy_day] if buy_day < len(dates) else None,
+                'sell_date': dates[sell_day] if sell_day < len(dates) else None,
                 'buy_price': buy_price,
                 'sell_price': sell_price,
                 'profit': profit,
-                'return_percent': (profit / buy_price) * 100
+                'return_percent': (profit / buy_price) * 100 if buy_price > 0 else 0
             })
         
         i += 1  # Move to next day to look for new transaction
@@ -147,39 +171,73 @@ def max_profitv3(data:DataFrame):
                 transactions.append({                # Store transaction    
                     'buy_day': i-1,
                     'sell_day': i,
-                    'buy_date': dates[i-1],
-                    'sell_date': dates[i],
+                    'buy_date': dates[i-1] if (i-1) < len(dates) else None,
+                    'sell_date': dates[i] if i < len(dates) else None,
                     'buy_price': prices[i-1],
                     'sell_price': prices[i],
                     'profit': profit,
-                    'return_percent': (profit / prices[i-1]) * 100
+                    'return_percent': (profit / prices[i-1]) * 100 if prices[i-1] > 0 else 0
                 })
-    
+
     # Sort by date to see chronological distribution
     transactions.sort(key=lambda x: x['buy_day'])
     
-    # print(f"Total transactions found: {len(transactions)}")
-    # if transactions:
-    #     print(f"First transaction: {transactions[0]['buy_date']}")
-    #     print(f"Last transaction: {transactions[-1]['buy_date']}")
-    
-    return {
+    result = {
         'max_profit_single': max_profit_single,
         'buy_day_single': buy_day_single,
         'sell_day_single': sell_day_single,
-        'buy_date_single': dates[buy_day_single],
-        'sell_date_single': dates[sell_day_single],
-        'buy_price_single': prices[buy_day_single],
-        'sell_price_single': prices[sell_day_single],
         'total_profit_multiple': total_profit_multiple,
         'transactions': transactions,
-        'average_profit_per_trade': total_profit_multiple / len(transactions) if transactions else 0,
         'num_transactions': len(transactions),
-        'best_transaction': transactions[0] if transactions else None
+        'average_profit_per_trade': total_profit_multiple / len(transactions) if transactions else 0,
+        'data_quality': 'normal'
+    }
+    
+    if buy_day_single < len(dates):
+        result['buy_date_single'] = dates[buy_day_single]
+    else:
+        result['buy_date_single'] = None
+        
+    if sell_day_single < len(dates):
+        result['sell_date_single'] = dates[sell_day_single]
+    else:
+        result['sell_date_single'] = None
+        
+    if buy_day_single < len(prices):
+        result['buy_price_single'] = prices[buy_day_single]
+    else:
+        result['buy_price_single'] = 0
+        
+    if sell_day_single < len(prices):
+        result['sell_price_single'] = prices[sell_day_single]
+    else:
+        result['sell_price_single'] = 0
+        
+    result['best_transaction'] = max(transactions, key=lambda x: x['profit']) if transactions else None
+    
+    return result
+
+def create_empty_result(error_message):
+    """Return consistent empty result for error cases"""
+    
+    return {
+        'max_profit_single': 0,
+        'buy_day_single': 0,
+        'sell_day_single': 0,
+        'buy_date_single': None,
+        'sell_date_single': None,
+        'buy_price_single': 0,
+        'sell_price_single': 0,
+        'total_profit_multiple': 0,
+        'transactions': [],
+        'num_transactions': 0,
+        'average_profit_per_trade': 0,
+        'best_transaction': None,
+        'data_quality': 'error',
+        'error_message': error_message 
     }
 
-
-def count_price_runs(data:DataFrame):
+def count_price_runs(data:DataFrame) -> dict:
     """
     1. Count: Number of consecutive upward or downward trends.
         A sequence of 1 or more days moving in the same direction (upward or downward) counts as 1 trend.
@@ -203,18 +261,20 @@ def count_price_runs(data:DataFrame):
         if run_type == current_run['type']:                         # +1 if same run type
             current_run['length'] += 1
         else:
-            if current_run['type'] == 'up':                         # store completed run
-                up_runs.append(current_run['length'])               # compute runs in O(n)
+            if current_run['type'] == 'up':
+                if current_run['length'] >= 2:                         # store completed run
+                    up_runs.append(current_run['length'])
             elif current_run['type'] == 'down':
-                down_runs.append(current_run['length'])
+                if current_run['length'] >= 2:
+                    down_runs.append(current_run['length'])
             current_run = {'type': run_type, 'length': 1 if run_type != 'flat' else 0}
 
     # Append the last run if it was an up or down run
-    if current_run['type'] == 'up':
-        up_runs.append(current_run['length'])
-    elif current_run['type'] == 'down':
-        down_runs.append(current_run['length'])
-
+    if current_run['length'] >= 2:
+        if current_run['type'] == 'up':
+            up_runs.append(current_run['length'])
+        elif current_run['type'] == 'down':
+            down_runs.append(current_run['length'])
     runs['upward']['count'] = len(up_runs)                          # summarize runs
     runs['upward']['total_days'] = sum(up_runs)                     # update dictionary in O(1)
     runs['downward']['count'] = len(down_runs)                      
