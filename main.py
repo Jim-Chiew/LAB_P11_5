@@ -89,6 +89,11 @@ app.layout = html.Div(children=[
     )
 def update_line_fig(ticker, start_date, end_date, sma_window, return_type):
     data = get_stock_data(ticker, start_date, end_date)
+    if data is None or data.empty or len(data) == 0:
+        return error_page("Dates chosen provides no data"), error_page("")
+
+    if len(data) < 2:
+        return error_page("Need at least 2 data points for analysis"), error_page("")
     result = max_profit(data)
 
     start_date_datetime = to_datetime(start_date)

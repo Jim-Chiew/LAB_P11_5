@@ -1,9 +1,14 @@
-from pandas import DataFrame, Timestamp
+from pandas import DataFrame
 from numpy import nan, errstate, where, divide, log, isfinite
 
 
 def compute_sma(data:DataFrame, window:int=20) -> DataFrame:
-    # data[f'SMA'] = data['Close'].rolling(window=window).mean()  # validation code
+    # Check if window is larger than available data
+    if len(data) < window:
+        # If not enough data, return all NaN or handle differently
+        data['SMA'] = nan
+        return data
+
     window_sum = sum(data['Close'].iloc[:window])                 # sliding window to get SMA
     results = [window_sum / window]
     for i in range(window, len(data)):
@@ -149,6 +154,80 @@ def max_profit(data:DataFrame) -> dict:
         'best_transaction': transactions[0] if transactions else None
     }
 
+
+def max_profit_multiple(data:DataFrame, results: dict) -> list[tuple]:
+    filtered_transactions = []
+    main_output = []
+    min_day_gap = 3  # Minimum days between transactions to avoid overlap
+    
+    prices = data['Close'].tolist()
+    dates = data['Date'].tolist()
+    for transaction in results['transactions']:
+        buy_date = dates[transaction['buy_day']]
+        sell_date = dates[transaction['sell_day']]
+        
+        # Skip transactions that are too close to single transaction points
+        too_close_to_single = (
+            abs(transaction['buy_day'] - results['buy_day_single']) < min_day_gap or
+            abs(transaction['sell_day'] - results['sell_day_single']) < min_day_gap or
+            abs(transaction['buy_day'] - results['sell_day_single']) < min_day_gap or
+            abs(transaction['sell_day'] - results['buy_day_single']) < min_day_gap
+        )
+        
+        # Skip if buy and sell are on same or consecutive days
+        days_apart = transaction['sell_day'] - transaction['buy_day']
+        if days_apart < 2 or too_close_to_single:
+            continue
+            
+        filtered_transactions.append(transaction)
+    
+    # Limit number of transactions to avoid overcrowding
+    max_transactions = 15
+    if len(filtered_transactions) > max_transactions:
+        # Keep only the most profitable transactions
+        filtered_transactions.sort(key=lambda x: x['profit'], reverse=True)
+        filtered_transactions = filtered_transactions[:max_transactions]
+        filtered_transactions.sort(key=lambda x: x['buy_day'])  # Re-sort by date
+    
+    # Multiple transactions with dynamic positioning
+    for i, transaction in enumerate(filtered_transactions):
+        buy_date = dates[transaction['buy_day']]
+        sell_date = dates[transaction['sell_day']]
+        buy_price = prices[transaction['buy_day']]
+        sell_price = prices[transaction['sell_day']]
+        
+        # Calculate dynamic offsets based on local density
+        price_range = max(prices) - min(prices)
+        base_offset = price_range * 0.04
+        
+        # Check for existing annotations at these dates
+        buy_offsets_used = []
+        sell_offsets_used = []
+        # Track used positions to avoid overlaps
+        used_positions = {}
+        single_buy_date = dates[results['buy_day_single']]
+        single_sell_date = dates[results['sell_day_single']]
+        # Store single transaction positions
+        used_positions[single_buy_date] = 'top'
+        used_positions[single_sell_date] = 'top'
+        
+        for used_date, used_offset in used_positions.items():
+            if used_date == buy_date:
+                buy_offsets_used.append(used_offset)
+            if used_date == sell_date:
+                sell_offsets_used.append(used_offset)
+        
+        # Choose offsets that don't conflict
+        available_offsets = [base_offset, -base_offset, base_offset*1.5, -base_offset*1.5, base_offset*2, -base_offset*2]
+        
+        buy_offset = next((off for off in available_offsets if off not in buy_offsets_used), base_offset)
+        sell_offset = next((off for off in available_offsets if off not in sell_offsets_used), -base_offset)
+
+        main_output.append((buy_date, buy_price, sell_date, sell_price))
+        # Update used positions
+        used_positions[buy_date] = buy_offset
+        used_positions[sell_date] = sell_offset
+    return main_output
 
 def count_price_runs(data:DataFrame) -> dict:
     """

@@ -1,7 +1,7 @@
 from plotly.graph_objects import Scatter, Bar, Candlestick, Indicator, Figure
 from plotly.subplots import make_subplots
-from pandas import DataFrame, Timestamp, to_datetime
-from calculations import count_price_runs, compute_sma, compute_daily_returns
+from pandas import DataFrame
+from calculations import count_price_runs, compute_sma, compute_daily_returns, max_profit_multiple
 
 
 def fig_main_plot(data:DataFrame, ticker:str, max_profit:dict, sma_window:int, return_type:str="simple") -> Figure:
@@ -57,7 +57,7 @@ def fig_main_plot(data:DataFrame, ticker:str, max_profit:dict, sma_window:int, r
     fig.add_annotation(
         x=max_profit["buy_date_single"],
         y=data["Close"].mean(),
-        text="Best Buy",
+        text="Best Buy Point",
         showarrow=True,
         arrowhead=2,
         ax=40,   # arrow offset on x-axis (0 = centered)
@@ -66,7 +66,7 @@ def fig_main_plot(data:DataFrame, ticker:str, max_profit:dict, sma_window:int, r
     fig.add_annotation(
         x=max_profit["sell_date_single"],
         y=data["Close"].mean(),
-        text="Best sell",
+        text="Best Sell Point",
         showarrow=True,
         arrowhead=2,
         ax=60,   # arrow offset on x-axis (0 = centered)
@@ -92,88 +92,12 @@ def fig_main_plot(data:DataFrame, ticker:str, max_profit:dict, sma_window:int, r
         name="Candlestick"
     ), row=3, col=1)
 
-    fig.update_layout(
-    title=ticker + " Stock Information:",
-    xaxis_rangeslider_visible=False,
-    # Modify graph margin to remove/minimize empty spaces of the window.  
-    margin=dict(l=20, r=15, t=50, b=0),
-    height=1500
-    )
-
-
-    ##########################  WEI EN CODE HERE #########################################
-    results = max_profit
-    prices = data['Close'].tolist()
-    dates = data['Date'].tolist()
-
-    filtered_transactions = []
-    min_day_gap = 3  # Minimum days between transactions to avoid overlap
-    
-    for transaction in results['transactions']:
-        buy_date = dates[transaction['buy_day']]
-        sell_date = dates[transaction['sell_day']]
-        
-        # Skip transactions that are too close to single transaction points
-        too_close_to_single = (
-            abs(transaction['buy_day'] - results['buy_day_single']) < min_day_gap or
-            abs(transaction['sell_day'] - results['sell_day_single']) < min_day_gap or
-            abs(transaction['buy_day'] - results['sell_day_single']) < min_day_gap or
-            abs(transaction['sell_day'] - results['buy_day_single']) < min_day_gap
-        )
-        
-        # Skip if buy and sell are on same or consecutive days
-        days_apart = transaction['sell_day'] - transaction['buy_day']
-        if days_apart < 2 or too_close_to_single:
-            continue
-            
-        filtered_transactions.append(transaction)
-    
-    # Limit number of transactions to avoid overcrowding
-    max_transactions = 15
-    if len(filtered_transactions) > max_transactions:
-        # Keep only the most profitable transactions
-        filtered_transactions.sort(key=lambda x: x['profit'], reverse=True)
-        filtered_transactions = filtered_transactions[:max_transactions]
-        filtered_transactions.sort(key=lambda x: x['buy_day'])  # Re-sort by date
-    
-    # Multiple transactions with dynamic positioning
-    for i, transaction in enumerate(filtered_transactions):
-        buy_date = dates[transaction['buy_day']]
-        sell_date = dates[transaction['sell_day']]
-        buy_price = prices[transaction['buy_day']]
-        sell_price = prices[transaction['sell_day']]
-        
-        # Calculate dynamic offsets based on local density
-        price_range = max(prices) - min(prices)
-        base_offset = price_range * 0.04
-        
-        # Check for existing annotations at these dates
-        buy_offsets_used = []
-        sell_offsets_used = []
-        # Track used positions to avoid overlaps
-        used_positions = {}
-        single_buy_date = dates[results['buy_day_single']]
-        single_sell_date = dates[results['sell_day_single']]
-        # Store single transaction positions
-        used_positions[single_buy_date] = 'top'
-        used_positions[single_sell_date] = 'top'
-        
-        for used_date, used_offset in used_positions.items():
-            if used_date == buy_date:
-                buy_offsets_used.append(used_offset)
-            if used_date == sell_date:
-                sell_offsets_used.append(used_offset)
-        
-        # Choose offsets that don't conflict
-        available_offsets = [base_offset, -base_offset, base_offset*1.5, -base_offset*1.5, base_offset*2, -base_offset*2]
-        
-        buy_offset = next((off for off in available_offsets if off not in buy_offsets_used), base_offset)
-        sell_offset = next((off for off in available_offsets if off not in sell_offsets_used), -base_offset)
-        
-        # Add text annotations with dynamic positioning
+    # Plots multiple buy/sell in main scatter plot. row 1
+    for index, output in enumerate(max_profit_multiple(data, max_profit)):
+        buy_date, buy_price, sell_date, sell_price = output
         fig.add_annotation(
-            x=buy_date, y=buy_price + buy_offset,
-            text=f"BUY{i+1}",  # Number the transactions
+            x=buy_date, y=buy_price,
+            text=f"BUY{index+1}",  # Number the transactions
             showarrow=True, 
             arrowhead=2, 
             arrowsize=0.7,
@@ -182,10 +106,10 @@ def fig_main_plot(data:DataFrame, ticker:str, max_profit:dict, sma_window:int, r
             bordercolor="crimson",
             font=dict(size=10, color="crimson")
         )
-        
+
         fig.add_annotation(
-            x=sell_date, y=sell_price + sell_offset,
-            text=f"SELL{i+1}",  # Number the transactions
+            x=sell_date, y=sell_price,
+            text=f"SELL{index+1}",  # Number the transactions
             showarrow=True, 
             arrowhead=2, 
             arrowsize=0.7,
@@ -194,22 +118,25 @@ def fig_main_plot(data:DataFrame, ticker:str, max_profit:dict, sma_window:int, r
             bordercolor="lime", 
             font=dict(size=10, color="lime")
         )
-        
-        # Update used positions
-        used_positions[buy_date] = buy_offset
-        used_positions[sell_date] = sell_offset
-        
-        # Add markers without text
+
         fig.add_trace(Scatter(
             x=[buy_date, sell_date],
             y=[buy_price, sell_price],
             mode='markers',
-            name='Multi Transaction' if i == 0 else '',
+            name='Multi Transaction' if index == 0 else '',
             marker=dict(size=8, color=['crimson', 'lime'], 
                        symbol=['triangle-down', 'triangle-up']),
-            showlegend=(i == 0)
+            showlegend=(index == 0)
         ))
+    
 
+    fig.update_layout(
+    title=ticker + " Stock Information:",
+    xaxis_rangeslider_visible=False,
+    # Modify graph margin to remove/minimize empty spaces of the window.  
+    margin=dict(l=20, r=15, t=50, b=0),
+    height=1500
+    )
     return fig
 
 
@@ -283,20 +210,27 @@ def fig_indicators(data:DataFrame, max_profit:float) -> Figure:
     
     return fig
 
-def error_page(error_msg:str) -> Figure:
-    empty_fig = Figure()         # Empty fig with error message
-    empty_fig.add_annotation(
-        text=error_msg,
+def error_page(error_message: str) -> Figure:
+    """Create a standardized error figure with the error message"""
+    error_fig = Figure()
+    
+    error_fig.add_annotation(
+        text=f"❌ ANALYSIS ERROR<br>{error_message}",
         xref="paper", yref="paper",
-        x=0.5, y=0.5, showarrow=False,
-        font=dict(size=18, color="red"),
-        align="center"
+        x=0.5, y=1, showarrow=False,
+        font=dict(size=16, color="red"),
+        align="center",
+        bgcolor="lightyellow",
+        bordercolor="red",
+        borderwidth=2
     )
-    empty_fig.update_layout(
+    
+    error_fig.update_layout(
         xaxis=dict(visible=False),
         yaxis=dict(visible=False),
         plot_bgcolor="white",
         paper_bgcolor="white",
-        margin=dict(l=0, r=0, t=40, b=0)
+        margin=dict(l=20, r=20, t=50, b=20),
+        height=400
     )
-    return empty_fig
+    return error_fig
