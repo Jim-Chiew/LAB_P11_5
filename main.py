@@ -3,7 +3,7 @@ from dash import Dash, html, dcc, Input, callback, Output
 from pandas import to_datetime
 from yfinance_interface import get_stock_data
 from plots_interface import fig_main_plot, fig_indicators, error_page
-from calculations import max_profit_edge_case
+from calculations import max_profit
 
 # Default datas:
 ticker = "AMZN"
@@ -93,7 +93,7 @@ app.layout = html.Div(children=[
     )
 def update_line_fig(ticker, start_date, end_date, sma_window, return_type):
     data = get_stock_data(ticker, start_date, end_date)
-    result = max_profit_edge_case(data)
+    result = max_profit(data)
 
     start_date_datetime = to_datetime(start_date)
     end_date_datetime = to_datetime(end_date)

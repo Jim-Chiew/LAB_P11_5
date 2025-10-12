@@ -51,57 +51,59 @@ def compute_daily_returns(data:DataFrame, return_type:str='both') -> DataFrame:
     
     return data
 
-def max_profit_edge_case(data):   
-    # Edge case handling: Validate input data before processing
-    if data is None or data.empty or len(data) == 0:
-        return create_empty_result("No data provided")
+# def max_profit_edge_case(data):   
+#     # Edge case handling: Validate input data before processing
+#     if data is None or data.empty or len(data) == 0:
+#         return create_empty_result("No data provided")
     
-    # Check for required columns
-    required_columns = ['Date', 'Close']
-    missing_columns = [col for col in required_columns if col not in data.columns]
-    if missing_columns:
-        return create_empty_result(f"Missing required columns: {missing_columns}")
+#     # Check for required columns
+#     required_columns = ['Date', 'Close']
+#     missing_columns = [col for col in required_columns if col not in data.columns]
+#     if missing_columns:
+#         return create_empty_result(f"Missing required columns: {missing_columns}")
     
-    # Check for minimum data points
-    if len(data) < 2:
-        return create_empty_result("Need at least 2 data points for analysis")
+#     # Check for minimum data points
+#     if len(data) < 2:
+#         return create_empty_result("Need at least 2 data points for analysis")
     
-    # Check for valid data types and NaN values
-    try:
-        prices = data['Close'].tolist()
-        dates = data['Date'].tolist()
+#     # Check for valid data types and NaN values
+#     try:
+#         prices = data['Close'].tolist()
+#         dates = data['Date'].tolist()
         
-        # Check for NaN or invalid values in prices
-        if any(not isinstance(price, (int, float)) or pd.isna(price) for price in prices):
-            return create_empty_result("Invalid price data contains NaN or non-numeric values")
+#         # Check for NaN or invalid values in prices
+#         if any(not isinstance(price, (int, float)) or pd.isna(price) for price in prices):
+#             return create_empty_result("Invalid price data contains NaN or non-numeric values")
             
-    except (KeyError, TypeError, ValueError) as e:
-        return create_empty_result(f"Data processing error: {str(e)}")
+#     except (KeyError, TypeError, ValueError) as e:
+#         return create_empty_result(f"Data processing error: {str(e)}")
     
-    # Check for edge case of all zero/negative prices
-    if all(price <= 0 for price in prices):
-        # Process anyway but flag as edge case
-        result = max_profit(prices, dates)
-        result['data_quality'] = 'edge_case'
-        result['issue'] = "All prices are zero or negative"
-        return result
+#     # Check for edge case of all zero/negative prices
+#     if all(price <= 0 for price in prices):
+#         # Process anyway but flag as edge case
+#         result = max_profit(prices, dates)
+#         result['data_quality'] = 'edge_case'
+#         result['issue'] = "All prices are zero or negative"
+#         return result
     
-    # If all validations pass, proceed with original logic
-    return max_profit(prices, dates)
+#     # If all validations pass, proceed with original logic
+#     return max_profit(prices, dates)
 
-def max_profit(prices, dates):
+def max_profit(data:DataFrame) -> dict:
+    """Enhanced max profit with single and multiple transactions - AGGRESSIVE APPROACH"""
+    prices = data['Close'].tolist()
+    dates = data['Date'].tolist()
+    
     # Single Transaction (buy once, sell once)
     min_price = float('inf')
     max_profit_single = 0
     buy_day_single = sell_day_single = 0
     temp_buy_day = 0
-
-    # Iterate through all prices to find optimal single transaction
+    
     for i, price in enumerate(prices):
-        # Update minimum price if current price is lower
         if price < min_price:
-            min_price = price   # If new lowest price found
-            temp_buy_day = i    # Update temp buy day
+            min_price = price
+            temp_buy_day = i
         
         profit = price - min_price
         if profit > max_profit_single:
@@ -113,109 +115,113 @@ def max_profit(prices, dates):
     total_profit_multiple = 0
     transactions = []
     
-    # Buy at every local minimum, sell at next local maximum
+    # Strategy 1: Buy at every local minimum, sell at next local maximum
     i = 0
-    n = len(prices)  # Store length for efficiency
-    
-    while i < n - 1:
+    while i < len(prices) - 1:
         # Find local minimum (buy point)
-        while i < n - 1 and prices[i] >= prices[i + 1]:
-            i += 1 # Move forward while prices are decreasing
+        while i < len(prices) - 1 and prices[i] >= prices[i + 1]:
+            i += 1
         
-        # Exit if reach end of price list
-        if i >= n - 1:
+        if i >= len(prices) - 1:
             break
             
-        buy_day = i             # Found local minimum - buy day
-        buy_price = prices[i]   # Buy price at local minimum
+        buy_day = i
+        buy_price = prices[i]
         
         # Find local maximum (sell point)  
-        i += 1      # Move to next day after buying
-        
-        if i >= n:
-            break
+        i += 1
+        while i < len(prices) - 1 and prices[i] <= prices[i + 1]:
+            i += 1
             
-        while i < n - 1 and prices[i] <= prices[i + 1]:
-            i += 1  # Move forward while prices are increasing
-            
-        sell_day = i            # Found local maximum - sell day
-        
-        if sell_day >= n:
-            sell_day = n - 1
-            
-        sell_price = prices[sell_day]  # Sell price at local maximum
+        sell_day = i
+        sell_price = prices[i]
         
         profit = sell_price - buy_price
         
-        if profit > 0:  # Only record profitable trades
+        if profit > 0:  # Only profitable trades
             total_profit_multiple += profit
             transactions.append({
                 'buy_day': buy_day,
                 'sell_day': sell_day,
-                'buy_date': dates[buy_day] if buy_day < len(dates) else None,
-                'sell_date': dates[sell_day] if sell_day < len(dates) else None,
+                'buy_date': dates[buy_day],
+                'sell_date': dates[sell_day],
                 'buy_price': buy_price,
                 'sell_price': sell_price,
                 'profit': profit,
-                'return_percent': (profit / buy_price) * 100 if buy_price > 0 else 0
+                'return_percent': (profit / buy_price) * 100
             })
         
-        i += 1  # Move to next day to look for new transaction
+        i += 1
     
     # If still no transactions, use the simple consecutive day approach as back up
     if len(transactions) < 10:  # If too few transactions
         for i in range(1, len(prices)):
             if prices[i] > prices[i-1]:
-                profit = prices[i] - prices[i-1]     # Daily profit
-                total_profit_multiple += profit      # Add to total
-                transactions.append({                # Store transaction    
+                profit = prices[i] - prices[i-1]
+                total_profit_multiple += profit
+                transactions.append({
                     'buy_day': i-1,
                     'sell_day': i,
-                    'buy_date': dates[i-1] if (i-1) < len(dates) else None,
-                    'sell_date': dates[i] if i < len(dates) else None,
+                    'buy_date': dates[i-1],
+                    'sell_date': dates[i],
                     'buy_price': prices[i-1],
                     'sell_price': prices[i],
                     'profit': profit,
-                    'return_percent': (profit / prices[i-1]) * 100 if prices[i-1] > 0 else 0
+                    'return_percent': (profit / prices[i-1]) * 100
                 })
-
+    
     # Sort by date to see chronological distribution
     transactions.sort(key=lambda x: x['buy_day'])
     
-    result = {
+    # print(f"Total transactions found: {len(transactions)}")
+    # if transactions:
+    #     print(f"First transaction: {transactions[0]['buy_date']}")
+    #     print(f"Last transaction: {transactions[-1]['buy_date']}")
+    
+    return {
         'max_profit_single': max_profit_single,
         'buy_day_single': buy_day_single,
         'sell_day_single': sell_day_single,
+        'buy_date_single': dates[buy_day_single],
+        'sell_date_single': dates[sell_day_single],
+        'buy_price_single': prices[buy_day_single],
+        'sell_price_single': prices[sell_day_single],
         'total_profit_multiple': total_profit_multiple,
         'transactions': transactions,
-        'num_transactions': len(transactions),
         'average_profit_per_trade': total_profit_multiple / len(transactions) if transactions else 0,
-        'data_quality': 'normal'
+        'num_transactions': len(transactions),
+        'best_transaction': transactions[0] if transactions else None
     }
+
+def max_profit_multiple(max_profit: dict, dates: list, min_day_gap: int = 3, max_transactions: int = 15) -> list:
+    """Filter transactions to avoid overlaps and limit quantity."""
+    filtered_transactions = []
     
-    if buy_day_single < len(dates):
-        result['buy_date_single'] = dates[buy_day_single]
-    else:
-        result['buy_date_single'] = None
+    for transaction in max_profit['transactions']:
         
-    if sell_day_single < len(dates):
-        result['sell_date_single'] = dates[sell_day_single]
-    else:
-        result['sell_date_single'] = None
+        # Skip transactions that are too close to single transaction points
+        too_close_to_single = (
+            abs(transaction['buy_day'] - max_profit['buy_day_single']) < min_day_gap or
+            abs(transaction['sell_day'] - max_profit['sell_day_single']) < min_day_gap or
+            abs(transaction['buy_day'] - max_profit['sell_day_single']) < min_day_gap or
+            abs(transaction['sell_day'] - max_profit['buy_day_single']) < min_day_gap
+        )
         
-    if buy_day_single < len(prices):
-        result['buy_price_single'] = prices[buy_day_single]
-    else:
-        result['buy_price_single'] = 0
-        
-    if sell_day_single < len(prices):
-        result['sell_price_single'] = prices[sell_day_single]
-    else:
-        result['sell_price_single'] = 0
-        
-    result['best_transaction'] = max(transactions, key=lambda x: x['profit']) if transactions else None
+        # Skip if buy and sell are on same or consecutive days
+        days_apart = transaction['sell_day'] - transaction['buy_day']
+        if days_apart < 2 or too_close_to_single:
+            continue
+            
+        filtered_transactions.append(transaction)
     
-    return result
+    # Limit number of transactions to avoid overcrowding
+    if len(filtered_transactions) > max_transactions:
+        # Keep only the most profitable transactions
+        filtered_transactions.sort(key=lambda x: x['profit'], reverse=True)
+        filtered_transactions = filtered_transactions[:max_transactions]
+        filtered_transactions.sort(key=lambda x: x['buy_day'])  # Re-sort by date
+    
+    return filtered_transactions
 
 def create_empty_result(error_message):
     """Return consistent empty result for error cases"""
