@@ -211,7 +211,14 @@ def fig_indicators(data:DataFrame, max_profit:float) -> Figure:
     return fig
 
 def error_page(error_message: str) -> Figure:
-    """Create a standardized error figure with the error message"""
+    """Generate a graph that display an error messafe
+
+    Args:
+        error_message (str): Error Messae to display
+
+    Returns:
+        Figure: Graph with error message
+    """
     error_fig = Figure()
     
     error_fig.add_annotation(
